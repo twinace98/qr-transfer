@@ -1,0 +1,78 @@
+{
+  "note": "deflate-raw (CompressionStream) vs LZMA (lzma-wasm level 6) on mixed md+js corpus; base corpus 39853 B, sizes above it are repeated (flatters LZMA).",
+  "baseCorpusBytes": 39853,
+  "rows": [
+    {
+      "KB": 10,
+      "repetitionFree": true,
+      "deflate": 4671,
+      "lzma": 4580,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -1.9
+    },
+    {
+      "KB": 25,
+      "repetitionFree": true,
+      "deflate": 10360,
+      "lzma": 9860,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -4.8
+    },
+    {
+      "KB": 40,
+      "repetitionFree": false,
+      "deflate": 14599,
+      "lzma": 13436,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -8
+    },
+    {
+      "KB": 50,
+      "repetitionFree": false,
+      "deflate": 18434,
+      "lzma": 13472,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -26.9
+    },
+    {
+      "KB": 100,
+      "repetitionFree": false,
+      "deflate": 35599,
+      "lzma": 13500,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -62.1
+    },
+    {
+      "KB": 250,
+      "repetitionFree": false,
+      "deflate": 85474,
+      "lzma": 13524,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -84.2
+    },
+    {
+      "KB": 500,
+      "repetitionFree": false,
+      "deflate": 168243,
+      "lzma": 13560,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -91.9
+    },
+    {
+      "KB": 1000,
+      "repetitionFree": false,
+      "deflate": 335091,
+      "lzma": 13632,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -95.9
+    },
+    {
+      "KB": 2000,
+      "repetitionFree": false,
+      "deflate": 668052,
+      "lzma": 13776,
+      "winner": "lzma",
+      "lzmaVsDeflatePct": -97.9
+    }
+  ]
+}

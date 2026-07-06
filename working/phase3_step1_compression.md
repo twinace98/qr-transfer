@@ -34,4 +34,16 @@
 - LZMA level 6. deflate-raw (no zlib header) for minimal overhead.
 - Correctness is guaranteed regardless of codec (SHA-256 gate); this is purely a size/dep call.
 
-**Locked-in (pending sign-off)**: keep LZMA in the auto-select vs drop it to shave the dep.
+## Resolution (2026-07-07) — KEEP LZMA (lzma-wasm)
+- The "deflate always wins" table above was biased: only ≤10 KB *simple* payloads
+  (repeated sentence / one source file). A crossover sweep on a realistic **mixed** corpus
+  (project md + js, `scripts/bench/compress-crossover.mjs` → `data/002-compression/crossover.json`)
+  shows **LZMA ties/wins from ~10 KB (repetition-free) and dominates ≥50 KB**
+  (10 KB: −1.9%, 25 KB: −4.8%, 40 KB: −8%, 50 KB: −27%, 100 KB: −62% vs deflate) —
+  deflate's 32 KB window cannot see long-range redundancy.
+- User direction: LZMA via WASM. The vendored codec is already `lzma-wasm` (Rust→WASM,
+  `app/vendor/lzma-wasm.esm.js`); auto-select {none, deflate-raw, LZMA} stays as shipped.
+- Sizes above the 40 KB base corpus are built by repetition (flatters LZMA); the
+  repetition-free points already establish the tie/crossover, so the call stands.
+
+**Locked-in**: LZMA (lzma-wasm) kept in the auto-select. → proceed to 3.2 (fountain).

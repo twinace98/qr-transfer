@@ -1,6 +1,6 @@
 # Project Status
 
-- **Phase**: Phase 3 — 3.1 (compression) done & PASS. **Paused (first-sub-step rule)**: LZMA correct but never beats deflate at ≤10 KB — awaiting keep/drop-LZMA call before 3.2 (fountain).
+- **Phase**: Phase 3 — 3.1 (compression) done & PASS; **LZMA keep/drop resolved 2026-07-07: KEEP (lzma-wasm)** — crossover sweep shows LZMA ties/wins from ~10 KB on mixed content and dominates ≥50 KB (`data/002-compression/crossover.json`). Now in **3.2 (LT fountain + blind-fire core)**.
 - **Target**: Browser optical QR file-transfer app — replica of charlielee206.github.io/QR_FTP, then performance study.
 - **Methods**: Vanilla JS (ES modules), `jsQR` (decode), `QRious` (encode); headless Node bench harness in later phases.
 - **Infrastructure**: None (client-side web app; runs in browser + local static server).
@@ -10,11 +10,12 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: awaiting Phase 2 kickoff approval. On go: build `scripts/bench/` (2.1), pause after 2.1, then baseline sweep (2.2) → Decision gate 1 (`B0`). To run the app now: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs`.
+3. **Next action**: Phase 3.2 — LT fountain (`app/js/fountain.js`) per `plans/phase3_blindfire_impl.md`: robust-soliton, seed-only neighbors, peeling decoder, harness blind-fire mode. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 
 - 2026-07-06: Project bootstrapped from skeleton; reference app protocol decoded into `Plan.md`; `jsQR` + `QRious` vendored to `app/vendor/`.
+- 2026-07-07: **Phase 3.1 complete (PASS)** — compress layer {none, deflate-raw, LZMA(wasm)}, 7/7 tests, ratios + crossover in `data/002-compression/`. LZMA kept (wins ≥~10 KB mixed content).
 - 2026-07-06: **Phase 1 complete** — modular replica (`app/`), all 5 sub-steps PASS. Node + headless-browser loopback confirm SHA-256-exact round-trip for text/binary at chunk sizes 100/250/500/800 and a lossy channel. See `working/phase1_step*.md`.
 
 ## Pending (high-level, from `Plan.md`)

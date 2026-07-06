@@ -6,9 +6,11 @@
 //   - deflate-raw: Web `CompressionStream` (native in both)
 //   - LZMA: `lzma-wasm` (Rust→WASM, inlined; clean Uint8Array API; loads in both)
 //
-// Note (measured 3.1): at our file sizes (≤ tens of KB) deflate consistently beats LZMA;
-// LZMA is kept as a drop-in that auto-wins only for large inputs. Correctness is codec-
-// independent (SHA-256 gate).
+// Note (measured 3.1, crossover sweep 2026-07-07): on realistic mixed content LZMA ties/wins
+// from ~10 KB and dominates ≥50 KB (deflate's 32 KB window misses long-range redundancy);
+// deflate only wins tiny/trivially-repetitive payloads. Decision: KEEP LZMA (lzma-wasm) in the
+// auto-select. See data/002-compression/crossover.json. Correctness is codec-independent
+// (SHA-256 gate).
 
 import { compress as wasmCompress, decompress as wasmDecompress, initWasm }
   from '../vendor/lzma-wasm.esm.js';

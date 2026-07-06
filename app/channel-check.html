@@ -1,0 +1,146 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel characterization — display→camera (Phase 4.0)</title>
+<style>
+body{font:15px/1.5 system-ui,sans-serif;max-width:860px;margin:1.5rem auto;padding:0 1rem;color:#222}
+h1{font-size:1.25rem} .row{display:flex;gap:1.5rem;flex-wrap:wrap} .box{flex:1 1 380px;border:1px solid #ccc;border-radius:8px;padding:1rem}
+canvas#pattern{width:100%;border:1px solid #999;image-rendering:pixelated}
+#stage{position:relative;width:100%} video{width:100%;background:#000}
+#guide{position:absolute;border:3px dashed #0f0;pointer-events:none}
+button{padding:.45rem .9rem;margin:.2rem .3rem .2rem 0}
+pre{font-size:12px;background:#f6f6f6;padding: .6rem;overflow:auto;max-height:280px}
+.status{font:13px ui-monospace,monospace;color:#555;min-height:1.5em}
+</style></head><body>
+<h1>Phase 4.0 — display→camera channel characterization</h1>
+<p><strong>Setup</strong>: open this page on the <em>display</em> device and press “Show pattern”
+(fills the left canvas — or pop it out fullscreen). On the <em>camera</em> device, open the same
+page, start the camera, aim so the pattern fills the green guide box, then “Measure 60 frames”.
+Same-machine loopback (webcam at own screen) works too.</p>
+<div class="row">
+  <div class="box"><h2>Display</h2>
+    <button id="btn-pattern">Show pattern</button>
+    <button id="btn-full">Fullscreen</button>
+    <canvas id="pattern" width="800" height="500"></canvas>
+  </div>
+  <div class="box"><h2>Measure</h2>
+    <button id="btn-cam">Start camera</button>
+    <button id="btn-measure" disabled>Measure 60 frames</button>
+    <button id="btn-save" disabled>Download JSON</button>
+    <div class="status" id="status">idle</div>
+    <div id="stage"><video id="video" muted playsinline></video><div id="guide"></div></div>
+    <canvas id="grab" hidden></canvas>
+    <pre id="report">—</pre>
+  </div>
+</div>
+<script type="module">
+import { patternLayout, patchRGB, LEVELS, calibrateChannel, mtfProxy } from './js/channelstats.js';
+const $ = (id) => document.getElementById(id);
+const L = patternLayout();
+const CHECK_N = 12;                       // checker cells per strip edge
+
+// --- display side --------------------------------------------------------------
+function paint() {
+  const cv = $('pattern'), ctx = cv.getContext('2d');
+  for (const p of L) {
+    const x = p.x * cv.width, y = p.y * cv.height, w = p.w * cv.width, h = p.h * cv.height;
+    if (p.kind !== 'checker') {
+      const [r, g, b] = patchRGB(p);
+      ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fillRect(x, y, w, h);
+    } else {
+      const cw = w / CHECK_N, chh = h / 4;
+      for (let i = 0; i < CHECK_N; i++) for (let j = 0; j < 4; j++) {
+        const [r, g, b] = patchRGB(p, (i + j) % 2);
+        ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fillRect(x + i * cw, y + j * chh, cw, chh);
+      }
+    }
+  }
+}
+$('btn-pattern').addEventListener('click', paint);
+$('btn-full').addEventListener('click', () => $('pattern').requestFullscreen && $('pattern').requestFullscreen());
+
+// --- camera side ---------------------------------------------------------------
+let stream = null, result = null;
+function guideRect() {                     // green box: central 70% x 70% of the video element
+  const v = $('video'), W = v.clientWidth, H = v.clientHeight;
+  return { x: 0.15 * W, y: 0.15 * H, w: 0.7 * W, h: 0.7 * H };
+}
+function placeGuide() {
+  const r = guideRect(), g = $('guide');
+  g.style.left = r.x + 'px'; g.style.top = r.y + 'px'; g.style.width = r.w + 'px'; g.style.height = r.h + 'px';
+}
+$('btn-cam').addEventListener('click', async () => {
+  stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+  const v = $('video'); v.srcObject = stream; await v.play();
+  placeGuide(); window.addEventListener('resize', placeGuide);
+  $('btn-measure').disabled = false;
+  const st = stream.getVideoTracks()[0].getSettings();
+  $('status').textContent = `camera ${st.width}x${st.height}@${st.frameRate || '?'} — aim pattern into the green box`;
+});
+
+function samplePatch(img, vw, vh, p, cx, cy, cw, chn) {
+  // sample an nxn grid inside the central 60% of the patch; return channel values
+  const out = [];
+  const n = 5;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const fx = p.x + p.w * (0.2 + 0.6 * (i / (n - 1)));
+    const fy = p.y + p.h * (0.2 + 0.6 * (j / (n - 1)));
+    const px = Math.round(cx + fx * cw), py = Math.round(cy + fy * chn);
+    const o = 4 * (py * vw + px);
+    out.push([img[o], img[o + 1], img[o + 2]]);
+  }
+  return out;
+}
+
+$('btn-measure').addEventListener('click', async () => {
+  const v = $('video'), cv = $('grab'), ctx = cv.getContext('2d', { willReadFrequently: true });
+  cv.width = v.videoWidth; cv.height = v.videoHeight;
+  const gr = guideRect(), sx = v.videoWidth / v.clientWidth, sy = v.videoHeight / v.clientHeight;
+  const cx = gr.x * sx, cy = gr.y * sy, cw = gr.w * sx, chh = gr.h * sy;
+  const FR = 60;
+  const perFrameSigma = { R: [], G: [], B: [] };
+  const mtfAcc = { R: [], G: [], B: [], Y: [] };
+  for (let f = 0; f < FR; f++) {
+    await new Promise((res) => requestAnimationFrame(res));
+    ctx.drawImage(v, 0, 0);
+    const img = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    for (let ch = 0; ch < 3; ch++) {
+      const name = 'RGB'[ch];
+      const byLevel = LEVELS.map((_, li) => {
+        const p = L.find((q) => q.kind === 'level' && q.ch === ch && q.level === li);
+        return samplePatch(img, cv.width, cv.height, p, cx, cy, cw, chh).map((rgb) => rgb[ch]);
+      });
+      perFrameSigma[name].push(calibrateChannel(byLevel).sigma8);
+      // MTF: checker strip vs the ch's darkest/brightest flat patches
+      const pc = L.find((q) => q.kind === 'checker' && q.ch === ch);
+      const cellW = pc.w / CHECK_N, cellH = pc.h / 4;
+      const samples = [];
+      for (let i = 0; i < CHECK_N; i++) for (let j = 0; j < 4; j++) {
+        const fx = pc.x + (i + 0.5) * cellW, fy = pc.y + (j + 0.5) * cellH;
+        const px = Math.round(cx + fx * cw), py = Math.round(cy + fy * chh);
+        samples.push({ phase: (i + j) % 2, v: img[4 * (py * cv.width + px) + ch] });
+      }
+      const dark = byLevel[0].reduce((s, x) => s + x, 0) / byLevel[0].length;
+      const light = byLevel[3].reduce((s, x) => s + x, 0) / byLevel[3].length;
+      mtfAcc[name].push(mtfProxy(samples, dark, light));
+    }
+    $('status').textContent = `measuring… frame ${f + 1}/${FR}`;
+  }
+  const med = (a) => a.slice().sort((x, y) => x - y)[a.length >> 1];
+  const st = stream.getVideoTracks()[0].getSettings();
+  result = {
+    when: new Date().toISOString(),
+    camera: { width: st.width, height: st.height, frameRate: st.frameRate, deviceId: (st.deviceId || '').slice(0, 8) },
+    sigma8: { R: +med(perFrameSigma.R).toFixed(2), G: +med(perFrameSigma.G).toFixed(2), B: +med(perFrameSigma.B).toFixed(2) },
+    mtf: { R: +med(mtfAcc.R).toFixed(3), G: +med(mtfAcc.G).toFixed(3), B: +med(mtfAcc.B).toFixed(3) },
+    frames: FR, note: 'sigma8 = per-frame-calibrated residual std (8-bit units); mtf = checker/flat modulation ratio',
+  };
+  $('report').textContent = JSON.stringify(result, null, 2);
+  $('btn-save').disabled = false;
+  $('status').textContent = 'done — save JSON into data/005-color/measured-channel.json';
+});
+$('btn-save').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
+  a.download = 'measured-channel.json'; a.click();
+});
+</script></body></html>

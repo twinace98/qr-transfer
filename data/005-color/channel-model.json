@@ -1,0 +1,39 @@
+{
+  "note": "LOCKED fallback model for 4.1-4.3 synthetic tests (literature-guided: Bayer 2x G + MJPEG 4:2:0 chroma). Replace with channel-check.html measurement -> measured-channel.json when available.",
+  "model": {
+    "sigma8": {
+      "R": 8,
+      "G": 5,
+      "B": 10
+    },
+    "mtf": {
+      "R": 0.75,
+      "G": 0.9,
+      "B": 0.7
+    },
+    "gamma": 2.2,
+    "crosstalk": [
+      [
+        0.9,
+        0.06,
+        0.04
+      ],
+      [
+        0.05,
+        0.9,
+        0.05
+      ],
+      [
+        0.04,
+        0.08,
+        0.88
+      ]
+    ],
+    "offset": [
+      0.02,
+      0.02,
+      0.03
+    ],
+    "source": "fallback (Bayer + MJPEG 4:2:0 literature); replace with channel-check.html measurement"
+  }
+}

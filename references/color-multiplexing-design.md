@@ -42,3 +42,31 @@
 
 ## Gate 3 tie-in (Plan.md)
 - Pass: >= 4 levels/channel decoded with fountain overhead < ~15%; else stop at Phase-3 gain.
+
+## Refinement analysis (2026-07-07, pre-kickoff) — the two open questions
+
+### Q1. Is the 4:2:0 penalty real on modern high-res cameras? — YES but it bites differently
+- Transport reality: 1080p+ uncompressed (YUY2 4:2:2) exceeds USB bandwidth -> HD/4K webcams
+  ship MJPEG or NV12, BOTH 4:2:0. Higher resolution makes subsampling MORE certain, not less.
+  Chromium may even pick lower-res YUY2 over MJPEG to avoid decode cost (w3c/mediacapture-
+  extensions #13). Also the Bayer CFA already halves R/B sampling AT THE SENSOR.
+- BUT the "4x area tax" framing assumed modules could otherwise be ~1 camera px. jsQR needs
+  >=3-4 camera px/module for reliable binary decode ANYWAY, which already satisfies the 2x2
+  chroma footprint at realistic operating points. So at sane module sizes the penalty
+  manifests NOT as area, but as (a) higher effective sigma on chroma-carried channels and
+  (b) chroma edge blur (MTF) at module boundaries -> it is a NOISE-BUDGET question.
+- Consequence: measure, don't assume -> new sub-step 4.0 (channel characterization).
+
+### Q2. Optimal split — channels are fixed (3 RGB primaries); the variable is LEVELS per channel
+- Error chain per plane: module SER = 2(1-1/L)Q(Delta/2sigma) -> QR EC-L absorbs ~1-2%
+  module SER per plane -> fountain absorbs whole-plane deaths. So the budget is generous.
+- SER table (linearized): L=4 @ sigma<=10 -> ~1e-5 (safe everywhere).
+  L=8 @ sigma=5 -> ~0.02% (fine); L=8 @ sigma=10 -> ~6% (plane dies).
+  => L=8 is viable ONLY on channels that calibrate down to sigma~5. Candidate: G (Bayer 2x
+  sampling + dominant luma weight in MJPEG). R/B on 4:2:0 chroma likely sigma 8-12.
+- Allocation candidates: 4/4/4 = 6 b/module (floor, safe);  G8/R4/B4 = 7 b (+17%, if
+  sigma_G<=5 measured);  8/8/8 = 9 b (only if all sigma<=5 — unlikely over MJPEG).
+  Y-hires/C-lores split remains the 4b fallback architecture (different module sizes).
+- Bit-plane trick generalizes: L=8 = 3 Gray-coded planes; planes total = sum(log2 L_i).
+- DECISION RULE (replaces fixed 4/4/4): 4.0 measures per-channel sigma + chroma MTF ->
+  allocator picks max sum(log2 L_i) s.t. per-plane module SER < 1% (QR-EC-L margin).

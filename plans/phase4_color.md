@@ -19,17 +19,25 @@ calibration strip with 3×3 crosstalk inverse).
   re-render → jsQR ×6); per-frame calibration strip + estimator; synthetic-channel tests
   (noise σ, crosstalk, gamma) in Node; browser loopback page (canvas→canvas) + headless
   verification; blind-fire integration (6 planes carry 6 packets/frame); gate-3 measurement.
-- **Out**: luma/chroma split design (Y high-res + Cb/Cr low-res — fallback if 4:2:0 kills
-  flat 6-plane); manual exposure locking (bonus, not mainline); real-optics tuning beyond a
-  manual smoke test.
+- **Out**: luma/chroma split design (Y high-res + Cb/Cr low-res — becomes Phase-4b only if
+  4.0 measures chroma σ too high for even L=4); manual exposure locking (bonus, not
+  mainline); real-optics tuning beyond the 4.0 measurement + one manual smoke test.
+
+**Q1/Q2 resolution built in** (analysis in `references/color-multiplexing-design.md`):
+4:2:0 is *more* certain on modern high-res cameras (USB bandwidth ⇒ MJPEG/NV12), but at
+jsQR's ≥3–4 px/module operating point it manifests as **per-channel σ and chroma-MTF**, not
+a 4× area tax — so 4.0 measures it. Channel count is fixed at 3 (display primaries); the
+design variable is **levels per channel**, chosen by the 4.2 allocator from measured σ
+(floor 4/4/4 = 6 b/module; stretch G8/R4/B4 = 7 b if σ_G ≤ ~5).
 
 ## Sub-steps
 
 | # | Sub-step | Success criterion |
 |---|----------|-------------------|
-| 4.1 | Bit-plane codec core (`colorplane.js`) | 6 planes composed/decomposed **synthetically** (no camera): byte-exact recovery of all 6 QR payloads after gamma + Gaussian noise σ = 10 (8-bit scale). Gray-coded levels verified (adjacent-level error corrupts exactly one plane). |
-| 4.2 | Per-frame calibration | Reference strip rendered each frame; Rx estimates M⁻¹ + thresholds per frame; synthetic sweep over crosstalk matrices / offsets / drifting exposure still decodes. |
-| 4.3 | Blind-fire integration + browser E2E | 6 blind-fire packets per frame through the color loopback (canvas→canvas, headless Chrome): SHA-256-exact file transfer; measured levels/channel and fountain overhead → gate 3. |
+| 4.0 | **Channel characterization** (display→camera) | Measurement page + report: per-channel effective σ (after per-frame calibration), chroma edge MTF at module boundaries, delivered transport format. Answers Q1 (does 4:2:0 bite at our module size?) with numbers; feeds the level allocator. Synthetic-channel fallback model locked for 4.1–4.3 tests. |
+| 4.1 | Bit-plane codec core (`colorplane.js`), **variable levels/channel** | N planes (Σlog₂Lᵢ) composed/decomposed **synthetically**: byte-exact at the 4.0-modeled σ per channel; Gray-coded (adjacent-level error corrupts exactly one plane). Supports L ∈ {2,4,8} per channel. |
+| 4.2 | Per-frame calibration + **level allocator** | Reference strip → M⁻¹ + thresholds per frame; ±20% exposure drift tracked. Allocator picks max Σlog₂Lᵢ s.t. per-plane module SER < 1% (QR EC-L margin) from measured σ — 4/4/4 (6 b) is the floor, G8/R4/B4 (7 b) the expected stretch. |
+| 4.3 | Blind-fire integration + browser E2E | Allocated planes carry blind-fire packets through the color loopback (canvas→canvas + 4.0 noise model, headless Chrome): SHA-256-exact; measured levels/channel + fountain overhead → gate 3. |
 
 **Decision gate 3 (after 4.3, from `Plan.md`)**: ≥ 4 levels/channel decode with fountain
 overhead < ~15%. On fail: stop at Phase 3's gain and document why.

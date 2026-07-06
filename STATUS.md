@@ -10,7 +10,7 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: Phase 4 kickoff — draft `plans/phase4_color.md` + `_impl.md` from `references/color-multiplexing-design.md` (4 levels/channel, bit-plane decomposition reusing jsQR; gate 3: >=4 levels/channel with fountain overhead <15%). Blind-fire app: `app/blindfire.html` (served via `python3 -m http.server` in `app/`). To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
+3. **Next action**: Phase 4 plan pair drafted (`plans/phase4_color{,_impl}.md`) — awaiting kickoff approval. On go: 4.1 colorplane.js (synthetic 6-plane codec, pause after per first-sub-step rule) -> 4.2 calibration -> 4.3 loopback E2E -> gate 3. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 

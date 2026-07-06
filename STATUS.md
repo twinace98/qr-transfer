@@ -10,7 +10,7 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: wire blind-fire mode into the app UI (`--mode` flag, per phase-3 Scope), then archive the phase-3 plan pair. Phase 4 (color, per references/color-multiplexing-design.md) kicks off after. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
+3. **Next action**: Phase 4 kickoff — draft `plans/phase4_color.md` + `_impl.md` from `references/color-multiplexing-design.md` (4 levels/channel, bit-plane decomposition reusing jsQR; gate 3: >=4 levels/channel with fountain overhead <15%). Blind-fire app: `app/blindfire.html` (served via `python3 -m http.server` in `app/`). To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 
@@ -22,8 +22,8 @@
 ## Pending (high-level, from `Plan.md`)
 
 - [x] **Phase 1** — modular replica, behavior-faithful to original.
-- [ ] **Phase 2** — reproducible benchmark harness + baseline throughput `B0`.
-- [ ] **Phase 3** — ≥ 3× throughput over baseline, SHA-256-exact.
+- [x] **Phase 2** — ✅ COMPLETE (gate 1 PASS, recorded retroactively): B0 = 1350 B/s; pair archived.
+- [x] **Phase 3** — ✅ COMPLETE (gate 2 PASS): blind-fire 5.2–16.3× B0 on incompressible data, all SHA-256-exact; UI integrated (`blindfire.html`); plan pair archived.
 
 ## Decisions locked in
 

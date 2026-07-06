@@ -37,3 +37,12 @@ Real-browser headless check (`app/blindfire-check.html`, Chrome `--headless=new`
 QRious byte-mode (Latin-1 char mapping) + jsQR `binaryData` round-trip **byte-exact at
 QR v15/20/25/33/40 (EC-L, up to 2953 B/frame)**. No encoder swap needed; the sweep's
 capacity assumptions hold end-to-end in a browser.
+
+## UI integration (closeout, 2026-07-07) — DONE
+`app/blindfire.html` + `app/js/blindfire-main.js`: opt-in blind-fire page (send: file →
+BlindFireSender broadcast loop at 5–15 fps, QRious EC-L Latin-1; receive: camera →
+jsQR `binaryData` → BlindFireReceiver → download). Implementation decision: a **separate
+entry page** instead of threading a `--mode` flag through `main.js` — satisfies the
+"opt-in mode, replica default" domain rule with zero replica drift (replica regression:
+protocol 6 / e2e 6 still pass). `camera.js` gained an additive optional `onDecodeBinary`
+callback (replica path unchanged). Replica page links to the mode ("Blind-fire mode →").

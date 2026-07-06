@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR FTP — Blind-fire mode (one-way)</title>
+<style>
+body{font:15px/1.5 system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;color:#222}
+h1{font-size:1.3rem} .col{display:flex;gap:2rem;flex-wrap:wrap} .box{flex:1 1 320px;border:1px solid #ccc;border-radius:8px;padding:1rem}
+canvas#tx-canvas{width:100%;max-width:640px;image-rendering:pixelated;border:1px solid #eee}
+video{width:100%;max-width:480px;background:#000;border-radius:4px}
+button{padding:.45rem .9rem;margin:.2rem .3rem .2rem 0} select,input{margin:.2rem 0}
+.status{font:13px ui-monospace,monospace;color:#555;margin-top:.5rem;min-height:2.2em}
+a{color:#2563eb}
+</style></head><body>
+<h1>Blind-fire mode — one-way fountain transfer</h1>
+<p>Opt-in Phase-3 transport: compress → LT fountain → broadcast. No ACKs — the receiver just
+watches. <a href="index.html">← replica (baseline) app</a></p>
+<div class="col">
+  <div class="box"><h2>Send</h2>
+    <input type="file" id="file-input"><br>
+    <label>block <select id="block-size"><option>250</option><option selected>500</option><option>800</option><option>1200</option><option>2000</option></select> B</label>
+    <label>fps <select id="fps"><option>5</option><option selected>10</option><option>15</option></select></label><br>
+    <button id="btn-start-tx">Start broadcast</button>
+    <button id="btn-stop-tx" disabled>Stop</button>
+    <div class="status" id="tx-status">idle</div>
+    <canvas id="tx-canvas"></canvas>
+  </div>
+  <div class="box"><h2>Receive</h2>
+    <button id="btn-start-rx">Start camera</button>
+    <button id="btn-switch-cam">Switch camera</button>
+    <button id="btn-download" disabled>Download</button>
+    <div class="status" id="rx-status">idle</div>
+    <video id="rx-video" muted playsinline></video>
+    <canvas id="rx-canvas" hidden></canvas>
+  </div>
+</div>
+<script src="vendor/qrious.min.js"></script>
+<script src="vendor/jsQR.min.js"></script>
+<script type="module" src="js/blindfire-main.js"></script>
+</body></html>

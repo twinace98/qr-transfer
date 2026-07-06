@@ -8,11 +8,13 @@
  * @param {HTMLVideoElement} o.video
  * @param {HTMLCanvasElement} o.canvas   offscreen canvas used to grab frames
  * @param {(data: string) => void} o.onDecode   called with the decoded QR string
+ * @param {(bytes: Uint8Array) => void} [o.onDecodeBinary]  optional: raw byte payload
+ *        (jsQR binaryData) — used by the blind-fire mode; replica path ignores it
  * @param {(msg: string) => void} [o.onStatus]
  * @param {(msg: string) => void} [o.onError]
  * @param {() => void} [o.onHit]         called on each successful decode (e.g. flash overlay)
  */
-export function createScanner({ video, canvas, onDecode, onStatus, onError, onHit }) {
+export function createScanner({ video, canvas, onDecode, onDecodeBinary, onStatus, onError, onHit }) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   let stream = null;
   let rafId = null;
@@ -26,8 +28,9 @@ export function createScanner({ video, canvas, onDecode, onStatus, onError, onHi
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       // eslint-disable-next-line no-undef
       const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-      if (code && code.data) {
-        onDecode(code.data);
+      if (code && (code.data || (code.binaryData && code.binaryData.length))) {
+        if (code.data) onDecode(code.data);
+        if (onDecodeBinary && code.binaryData && code.binaryData.length) onDecodeBinary(new Uint8Array(code.binaryData));
         if (onHit) onHit();
       }
     }

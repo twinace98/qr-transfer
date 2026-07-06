@@ -1,0 +1,13 @@
+{
+  "note": "Phase 4.1 — SIC decoder + pedestal grid under the LOCKED fallback channel model (sigma8 R8/G5/B10, 3x3 crosstalk, gamma 2.2). SER = worst-plane module symbol error rate over 3 seeds, 3721 modules. Naive = display-uniform grid (ped 0) + per-channel threshold decode after algebraic crosstalk inversion.",
+  "finding": "Gamma compresses dark display-space level gaps under linear-space interference: naive decode fails (~3-6% SER). SIC (nearest predicted response, 2 iterations) + PEDESTAL=64 grid is the remedy. G L=8 stretch does NOT survive fallback crosstalk (~2.2%) — allocator re-checks on measured sigma.",
+  "pedestalSweep_floor444": { "0": 3.44, "32": 1.21, "64": 1.08, "96": 1.67, "128": 3.87 },
+  "locked": { "pedestal": 64, "decoder": "SIC x2" },
+  "allocations": [
+    { "alloc": "R4/G4/B4", "bits": 6, "worstPlaneSERpct": 0.86, "pass1pct": true },
+    { "alloc": "R4/G4/B2", "bits": 5, "worstPlaneSERpct": 0.16, "pass1pct": true },
+    { "alloc": "R4/G8/B2", "bits": 6, "worstPlaneSERpct": 2.28, "pass1pct": false },
+    { "alloc": "R4/G8/B4", "bits": 7, "worstPlaneSERpct": 2.20, "pass1pct": false },
+    { "alloc": "R2/G8/B2", "bits": 5, "worstPlaneSERpct": 2.26, "pass1pct": false }
+  ]
+}

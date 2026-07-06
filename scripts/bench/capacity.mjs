@@ -20,3 +20,19 @@ export function qrVersionForBytes(nBytes) {
   for (let v = 1; v <= 40; v++) if (BYTE_CAPACITY_M[v] >= nBytes) return v;
   return null;
 }
+
+// Byte-mode capacities at EC level L (blind-fire uses L: CRC16 pre-gates corrupt frames,
+// so we trade QR redundancy for payload). index = version 1..40.
+export const BYTE_CAPACITY_L = [
+  0,
+  17, 32, 53, 78, 106, 134, 154, 192, 230, 271,      // 1..10
+  321, 367, 425, 458, 520, 586, 644, 718, 792, 858,   // 11..20
+  929, 1003, 1091, 1171, 1273, 1367, 1465, 1528, 1628, 1732, // 21..30
+  1840, 1952, 2068, 2188, 2303, 2431, 2563, 2699, 2809, 2953, // 31..40
+];
+
+/** Smallest QR version (EC-L, byte mode) that holds `nBytes`, or null if it exceeds V40. */
+export function qrVersionForBytesL(nBytes) {
+  for (let v = 1; v <= 40; v++) if (BYTE_CAPACITY_L[v] >= nBytes) return v;
+  return null;
+}

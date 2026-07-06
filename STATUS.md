@@ -1,6 +1,6 @@
 # Project Status
 
-- **Phase**: Phase 3 — 3.1 ✅ (LZMA kept, lzma-wasm) · **3.2 ✅ PASS** (LT fountain + blind-fire core; peeling + GF(2)-finish decoder, ε mean 2–6 % at k 64–256, locked c=0.1 δ=0.05). Next: **3.3 (preamble + capacity + combine)** → Decision gate 2 (≥ 3× B0).
+- **Phase**: Phase 3 — 3.1 ✅ (LZMA kept, lzma-wasm) · **3.2 ✅ PASS** (LT fountain + blind-fire core; peeling + GF(2)-finish decoder, ε mean 2–6 % at k 64–256, locked c=0.1 δ=0.05). **3.3 complete** — combined sweep 36/36 SHA-exact; binary(incompressible) 5.2–16.3× B0, text 57× B0 @0% drop. **Decision gate 2 pending user judgment** (encoder high-version browser check flagged).
 - **Target**: Browser optical QR file-transfer app — replica of charlielee206.github.io/QR_FTP, then performance study.
 - **Methods**: Vanilla JS (ES modules), `jsQR` (decode), `QRious` (encode); headless Node bench harness in later phases.
 - **Infrastructure**: None (client-side web app; runs in browser + local static server).
@@ -10,7 +10,7 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: Phase 3.3 — one-way preamble + QR capacity tuning (byte mode, EC-L, higher version; check QRious ceiling) + combined sweep vs `B0` on the Phase-2 harness → Decision gate 2. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
+3. **Next action**: Decision gate 2 judgment (posted; awaiting user). If PASS: browser-verify QRious byte-mode at v25+ (or swap encoder), wire blind-fire mode into app UI, phase summary + archive. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 

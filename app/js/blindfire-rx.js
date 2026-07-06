@@ -32,6 +32,7 @@ export class BlindFireReceiver {
     this.dec = null;
     this.packetsSeen = 0; // valid packets for THIS file (overhead accounting)
     this.corrupt = 0;
+    this.meta = null;     // {fileName, mimeType} once a preamble packet arrives
   }
 
   get progress() { return this.dec ? this.dec.solved / this.dec.k : 0; }
@@ -47,6 +48,19 @@ export class BlindFireReceiver {
       this.dec = new LTDecoder(p.k, p.payload.length, this.lt);
     }
     if (p.fileId !== this.fileId || this.done) return false;
+    if (p.seed === 0) {                            // preamble/metadata packet
+      if (!this.meta) {
+        const nameLen = p.payload[0];
+        const dec = new TextDecoder();
+        const rawMime = p.payload.subarray(1 + nameLen);
+        let end = rawMime.indexOf(0); if (end === -1) end = rawMime.length;
+        this.meta = {
+          fileName: dec.decode(p.payload.subarray(1, 1 + nameLen)),
+          mimeType: dec.decode(rawMime.subarray(0, end)),
+        };
+      }
+      return false;
+    }
     this.packetsSeen++;
     this.dec.addPacket(p.seed, p.payload);
     return this.done;

@@ -86,4 +86,20 @@ export class BlindFireSender {
     const { seed, data } = this.enc.next();
     return buildPacket({ fileId: this.fileId, k: this.k, fileLen: this.fileLen, seed, payload: data });
   }
+
+  /**
+   * Preamble/metadata packet (seed = 0, reserved: droplets start at 1, systematic >= BASE).
+   * Payload: [nameLen(1) | fileName utf8 | mimeType utf8], zero-padded to blockSize so the
+   * QR version stays constant. Broadcast periodically (one-way self-description) so a
+   * late-joining receiver learns fileName/mime; k and file_len ride the header as always.
+   */
+  metaPacket({ fileName = 'file.bin', mimeType = 'application/octet-stream' } = {}) {
+    const name = new TextEncoder().encode(fileName).subarray(0, 255);
+    const mime = new TextEncoder().encode(mimeType);
+    const payload = new Uint8Array(this.blockSize);
+    payload[0] = name.length;
+    payload.set(name, 1);
+    payload.set(mime.subarray(0, Math.max(0, this.blockSize - 1 - name.length)), 1 + name.length);
+    return buildPacket({ fileId: this.fileId, k: this.k, fileLen: this.fileLen, seed: 0, payload });
+  }
 }

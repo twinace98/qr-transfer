@@ -31,3 +31,9 @@
   v25–40 binary payloads needs a real-browser check (Phase-1 loopback page can host it).
   Even at conservative v15–20 (QRious-safe), incompressible binary = 5–8× B0.
 - Absolute B/s scales with fps; factors vs B0 are fps-invariant (same slot model).
+
+## Encoder verification (closeout, 2026-07-07) — RESOLVED
+Real-browser headless check (`app/blindfire-check.html`, Chrome `--headless=new`):
+QRious byte-mode (Latin-1 char mapping) + jsQR `binaryData` round-trip **byte-exact at
+QR v15/20/25/33/40 (EC-L, up to 2953 B/frame)**. No encoder swap needed; the sweep's
+capacity assumptions hold end-to-end in a browser.

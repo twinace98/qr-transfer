@@ -1,0 +1,36 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>RUNNING</title></head><body>
+<pre id="out"></pre>
+<script src="vendor/qrious.min.js"></script>
+<script src="vendor/jsQR.min.js"></script>
+<script>
+// QRious byte-mode capability check at high versions (Phase-3 closeout item).
+// Encode deterministic pseudo-random BINARY bytes (0-255) at EC-L payload sizes for
+// QR v15/v20/v25/v33/v40, draw, decode with jsQR, compare byte-exact.
+const CASES = [[15,520],[20,858],[25,1273],[33,2068],[40,2953]];
+function prng(n,seed){const a=new Uint8Array(n);let s=seed>>>0;for(let i=0;i<n;i++){s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;a[i]=s&0xff;}return a;}
+const results=[];
+for(const [v,bytes] of CASES){
+  let r={v,bytes,encode:false,decode:false,exact:false,err:null};
+  try{
+    const data=prng(bytes,v*1234+7);
+    let str='';for(const b of data)str+=String.fromCharCode(b);   // Latin-1 mapping
+    const qr=new QRious({value:str,level:'L',size:1800});
+    r.encode=true;
+    const img=new Image();
+    // QRious renders to its own canvas; grab pixels directly
+    const cv=document.createElement('canvas');cv.width=cv.height=1800;
+    const ctx=cv.getContext('2d');
+    const src=qr.canvas; ctx.drawImage(src,0,0,1800,1800);
+    const id=ctx.getImageData(0,0,1800,1800);
+    const dec=jsQR(id.data,1800,1800);
+    if(dec){r.decode=true;
+      const got=dec.binaryData?new Uint8Array(dec.binaryData):null;
+      r.exact=!!got&&got.length===data.length&&got.every((x,i)=>x===data[i]);
+      if(!r.exact&&got)r.err='len '+got.length+' vs '+data.length;
+    } else r.err='jsQR null';
+  }catch(e){r.err=String(e).slice(0,120);}
+  results.push(r);
+}
+document.getElementById('out').textContent=JSON.stringify(results);
+document.title='DONE';
+</script></body></html>

@@ -1,6 +1,6 @@
 # Project Status
 
-- **Phase**: Phase 3 — 3.1 (compression) done & PASS; **LZMA keep/drop resolved 2026-07-07: KEEP (lzma-wasm)** — crossover sweep shows LZMA ties/wins from ~10 KB on mixed content and dominates ≥50 KB (`data/002-compression/crossover.json`). Now in **3.2 (LT fountain + blind-fire core)**.
+- **Phase**: Phase 3 — 3.1 ✅ (LZMA kept, lzma-wasm) · **3.2 ✅ PASS** (LT fountain + blind-fire core; peeling + GF(2)-finish decoder, ε mean 2–6 % at k 64–256, locked c=0.1 δ=0.05). Next: **3.3 (preamble + capacity + combine)** → Decision gate 2 (≥ 3× B0).
 - **Target**: Browser optical QR file-transfer app — replica of charlielee206.github.io/QR_FTP, then performance study.
 - **Methods**: Vanilla JS (ES modules), `jsQR` (decode), `QRious` (encode); headless Node bench harness in later phases.
 - **Infrastructure**: None (client-side web app; runs in browser + local static server).
@@ -10,11 +10,12 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: Phase 3.2 — LT fountain (`app/js/fountain.js`) per `plans/phase3_blindfire_impl.md`: robust-soliton, seed-only neighbors, peeling decoder, harness blind-fire mode. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
+3. **Next action**: Phase 3.3 — one-way preamble + QR capacity tuning (byte mode, EC-L, higher version; check QRious ceiling) + combined sweep vs `B0` on the Phase-2 harness → Decision gate 2. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 
 - 2026-07-06: Project bootstrapped from skeleton; reference app protocol decoded into `Plan.md`; `jsQR` + `QRious` vendored to `app/vendor/`.
+- 2026-07-07: **Phase 3.2 complete (PASS)** — `fountain.js` + `blindfire-{tx,rx}.js`, 12/12 tests, zero back-channel SHA-exact at drop ≤20 %; ε(k=64/128/256)=5.6/3.4/2.0 % (droplets-only); locked c=0.1 δ=0.05; two bugs fixed (PRNG seeding collapse, peeling-only overhead → GE finish). `data/003-fountain/overhead.json`.
 - 2026-07-07: **Phase 3.1 complete (PASS)** — compress layer {none, deflate-raw, LZMA(wasm)}, 7/7 tests, ratios + crossover in `data/002-compression/`. LZMA kept (wins ≥~10 KB mixed content).
 - 2026-07-06: **Phase 1 complete** — modular replica (`app/`), all 5 sub-steps PASS. Node + headless-browser loopback confirm SHA-256-exact round-trip for text/binary at chunk sizes 100/250/500/800 and a lossy channel. See `working/phase1_step*.md`.
 

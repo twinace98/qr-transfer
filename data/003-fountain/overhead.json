@@ -1,0 +1,100 @@
+{
+  "note": "LT overhead eps = droplets/k - 1, droplets-only (late-join worst case). Systematic-pass path has eps=0 at 0% drop by construction. block=100 B.",
+  "scan": [
+    {
+      "c": 0.03,
+      "delta": 0.05,
+      "k64_mean%": 5.5,
+      "k64_p95%": 15.6,
+      "k128_mean%": 3.4,
+      "k128_p95%": 8.6,
+      "fails": 0
+    },
+    {
+      "c": 0.03,
+      "delta": 0.5,
+      "k64_mean%": 10.5,
+      "k64_p95%": 40.6,
+      "k128_mean%": 5.4,
+      "k128_p95%": 19.5,
+      "fails": 0
+    },
+    {
+      "c": 0.1,
+      "delta": 0.05,
+      "k64_mean%": 5.1,
+      "k64_p95%": 18.8,
+      "k128_mean%": 3.3,
+      "k128_p95%": 8.6,
+      "fails": 0
+    },
+    {
+      "c": 0.1,
+      "delta": 0.5,
+      "k64_mean%": 8.6,
+      "k64_p95%": 37.5,
+      "k128_mean%": 3.3,
+      "k128_p95%": 9.4,
+      "fails": 0
+    },
+    {
+      "c": 0.2,
+      "delta": 0.05,
+      "k64_mean%": 19.5,
+      "k64_p95%": 70.3,
+      "k128_mean%": 9.9,
+      "k128_p95%": 46.9,
+      "fails": 0
+    },
+    {
+      "c": 0.2,
+      "delta": 0.5,
+      "k64_mean%": 10.9,
+      "k64_p95%": 39.1,
+      "k128_mean%": 7.3,
+      "k128_p95%": 35.2,
+      "fails": 0
+    }
+  ],
+  "locked": {
+    "c": 0.1,
+    "delta": 0.05
+  },
+  "byK": [
+    {
+      "k": 16,
+      "meanEps": 15.8,
+      "p95Eps": 43.8,
+      "fails": 0,
+      "trials": 200
+    },
+    {
+      "k": 32,
+      "meanEps": 10.2,
+      "p95Eps": 28.1,
+      "fails": 0,
+      "trials": 200
+    },
+    {
+      "k": 64,
+      "meanEps": 5.6,
+      "p95Eps": 17.2,
+      "fails": 0,
+      "trials": 200
+    },
+    {
+      "k": 128,
+      "meanEps": 3.4,
+      "p95Eps": 8.6,
+      "fails": 0,
+      "trials": 200
+    },
+    {
+      "k": 256,
+      "meanEps": 2,
+      "p95Eps": 3.9,
+      "fails": 0,
+      "trials": 200
+    }
+  ]
+}

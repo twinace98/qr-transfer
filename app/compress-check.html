@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><title>compress.js browser check</title></head>
+<body>
+<pre id="out">running…</pre>
+<script type="module">
+  import { compress, decompress, METHOD } from './js/compress.js';
+  const out = document.getElementById('out');
+  const log = (m) => { out.textContent += '\n' + m; };
+  const eq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  try {
+    out.textContent = 'compress.js imported (incl. inlined lzma-wasm)';
+    const text = new TextEncoder().encode('browser deflate+lzma-wasm check '.repeat(120));
+    const rnd = crypto.getRandomValues(new Uint8Array(2048));
+    for (const [name, input] of [['text', text], ['random', rnd]]) {
+      const { method, data } = await compress(input);
+      const back = await decompress(method, data);
+      log(`${eq(back, input) ? 'PASS' : 'FAIL'} ${name}: method=${method} ${input.length}->${data.length}`);
+    }
+    log('DONE');
+  } catch (e) { log('ERROR: ' + (e && e.message)); }
+</script>
+</body></html>

@@ -1,0 +1,12 @@
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Large run outputs — add project-specific patterns here
+# e.g., *.wfn, *.h5, slurm-*.out

@@ -1,0 +1,27 @@
+{
+  "B0_bytesPerSec": 1350,
+  "definition": "text-10k, chunkSize=250, dropProb=0, fps=15 (headline baseline)",
+  "assumptions": {
+    "model": "slot model: wall-clock = (txSlots+ackSlots)/fps; stop-and-wait = DATA slot + ACK slot per chunk",
+    "fps_swept": [
+      10,
+      15,
+      30
+    ],
+    "ack_channel": "reliable (baseline)",
+    "seed": 20260706,
+    "note": "bytesPerSec scales linearly with fps; the >=3x Phase-3 target is fps-invariant (relative)."
+  },
+  "allShaExact": true,
+  "deterministic": true,
+  "files": [
+    {
+      "name": "text-10k",
+      "bytes": 10260
+    },
+    {
+      "name": "binary-10k",
+      "bytes": 10240
+    }
+  ]
+}

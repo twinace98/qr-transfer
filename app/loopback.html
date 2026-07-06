@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR FTP — In-browser Loopback Self-Test</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>QR FTP — Loopback Self-Test</h1>
+    <p>Wires Transmitter → Receiver in-page (no camera) and checks SHA-256 exactness.</p>
+  </header>
+  <main>
+    <div style="padding:1.5rem;">
+      <button id="run" class="btn btn-primary">Run self-test</button>
+      <pre id="out" class="mono" style="white-space:pre-wrap; margin-top:1rem; color:#cbd5e1;"></pre>
+    </div>
+  </main>
+
+  <script type="module">
+    import { parseFrame } from './js/protocol.js';
+    import { Transmitter } from './js/tx.js';
+    import { Receiver } from './js/rx.js';
+
+    const out = document.getElementById('out');
+    const log = (m) => { out.textContent += m + '\n'; };
+
+    async function sha256(bytes) {
+      const d = await crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    const b64 = (bytes) => btoa(String.fromCharCode(...bytes));
+    const fromB64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+    function runTransfer(bytes, chunkSize, drop = () => false) {
+      let clock = 0;
+      const tx = new Transmitter({ chunkSize, timeoutMs: 2500, now: () => clock });
+      const rx = new Receiver();
+      tx.loadBase64(b64(bytes), { fileName: 't.bin', mimeType: 'application/octet-stream' });
+      let done = null;
+      rx.onComplete = (s) => { done = s; };
+      let i = 0, frames = 0, guard = 0;
+      while (tx.status !== 'DONE' && guard++ < 1e6) {
+        const f = tx.tick();
+        if (f === null) { clock += 100; continue; }
+        frames++;
+        if (drop(i++)) { clock += 100; continue; }
+        const ack = rx.onTxFrame(parseFrame(f));
+        if (ack) tx.onAck(parseFrame(ack));
+        clock += 100;
+      }
+      return { received: fromB64(done), frames };
+    }
+
+    async function main() {
+      out.textContent = '';
+      let pass = 0, fail = 0;
+      const check = async (name, bytes, cs, drop) => {
+        const { received, frames } = runTransfer(bytes, cs, drop);
+        const a = await sha256(bytes), b = await sha256(received);
+        const okk = a === b;
+        okk ? pass++ : fail++;
+        log(`${okk ? 'PASS' : 'FAIL'}  ${name}  (cs=${cs}, ${frames} frames)  sha=${a.slice(0,12)}…`);
+      };
+      const rand = new Uint8Array(3000);
+      crypto.getRandomValues(rand);
+      const text = new TextEncoder().encode('hello optical world '.repeat(100));
+      await check('text/clean', text, 250);
+      for (const cs of [100, 250, 500, 800]) await check('binary/clean', rand, cs);
+      await check('binary/lossy(1-in-3)', rand, 250, (i) => i % 3 === 0);
+      log(`\n${pass} passed, ${fail} failed`);
+    }
+    document.getElementById('run').addEventListener('click', main);
+    main();
+  </script>
+</body>
+</html>

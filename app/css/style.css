@@ -1,0 +1,103 @@
+/* style.css — local dark theme reproducing the original's Tailwind look (slate palette). */
+:root {
+  --bg: #0f172a;         /* slate-900 */
+  --panel: #1e293b;      /* slate-800 */
+  --panel-2: #0f172a;    /* slate-900 */
+  --border: #334155;     /* slate-700 */
+  --text: #f8fafc;       /* slate-50 */
+  --muted: #94a3b8;      /* slate-400 */
+  --muted-2: #cbd5e1;    /* slate-300 */
+  --blue: #3b82f6;       /* blue-500 */
+  --blue-l: #60a5fa;     /* blue-400 */
+  --green: #22c55e;
+  --red: #f87171;        /* red-400 */
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: 1rem;
+}
+@media (min-width: 768px) { body { padding: 2rem; } }
+
+header { max-width: 56rem; margin: 0 auto 2rem; width: 100%; text-align: center; }
+header h1 { color: var(--blue-l); font-size: 1.875rem; font-weight: 700; margin: 0 0 .5rem; }
+header p { color: var(--muted); font-size: .875rem; margin: 0; }
+
+main {
+  max-width: 64rem; margin: 0 auto; width: 100%;
+  background: var(--panel); border-radius: .75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .5); overflow: hidden;
+}
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--panel-2); }
+.tab-btn {
+  flex: 1; padding: 1rem; font-weight: 600; color: var(--muted-2);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: color .15s; font-size: 1rem;
+}
+.tab-btn:hover { color: #fff; }
+.tab-btn.active { border-bottom-color: var(--blue); color: var(--blue-l); }
+
+.cols { display: flex; flex-direction: column; gap: 2rem; padding: 1.5rem; }
+@media (min-width: 768px) { .cols { flex-direction: row; } }
+.col { flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+
+.card {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: .5rem; padding: 1rem;
+}
+.card h2 { font-size: 1.125rem; font-weight: 600; color: #e2e8f0; margin: 0; }
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+
+.btn {
+  background: var(--border); color: #fff; border: none; border-radius: .375rem;
+  padding: .5rem 1rem; cursor: pointer; transition: background .15s; font-size: .95rem;
+}
+.btn:hover { background: #475569; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm { font-size: .75rem; padding: .25rem .75rem; display: inline-flex; align-items: center; gap: .25rem; }
+.btn-primary { background: var(--blue); }
+.btn-primary:hover { background: #2563eb; }
+.btn-primary:disabled { background: var(--blue); }
+.btn-green { background: #16a34a; }
+.btn-green:hover { background: #15803d; }
+
+/* Camera preview */
+.preview-wrap { position: relative; border-radius: .375rem; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
+#camera-preview { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.overlay {
+  position: absolute; inset: 12%; border: 4px solid var(--blue);
+  border-radius: .5rem; pointer-events: none; transition: border-color .1s;
+}
+.overlay.hit { border-color: var(--green); }
+.status { font-size: .875rem; color: var(--muted); margin-top: .5rem; min-height: 1.25rem; }
+.status .err { color: var(--red); }
+.status .good { color: #4ade80; }
+
+/* QR output */
+.qr-wrap { display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+#qr-canvas { width: 300px; max-width: 100%; height: auto; background: #fff; border-radius: .375rem; }
+
+label { font-size: .875rem; color: var(--muted-2); display: block; margin-bottom: .25rem; }
+input[type=file], select {
+  width: 100%; background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: .375rem; padding: .5rem;
+}
+select { cursor: pointer; }
+.field { margin-bottom: 1rem; }
+
+/* Progress */
+.progress { margin-top: 1rem; }
+.bar-track { background: var(--border); border-radius: 9999px; height: .625rem; overflow: hidden; }
+.bar-fill { background: var(--blue); height: 100%; width: 0; transition: width .2s; }
+.progress-text { font-size: .875rem; color: var(--muted); margin-top: .375rem; }
+
+.hidden { display: none !important; }
+.mono { font-variant-numeric: tabular-nums; }

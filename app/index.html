@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Optical FTP — Replica</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Vendored locally (no CDN): jsQR = decode, QRious = encode -->
+  <script src="vendor/jsQR.min.js"></script>
+  <script src="vendor/qrious.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>QR Optical FTP</h1>
+    <p>Air-gapped file transfer via webcam and screen. (Faithful replica)</p>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button id="tab-send" class="tab-btn active" data-mode="send">Transmit (Upload)</button>
+      <button id="tab-recv" class="tab-btn" data-mode="recv">Receive (Download)</button>
+    </div>
+
+    <div class="cols">
+      <!-- LEFT: webcam scanner (Rx input / Tx ACK input) -->
+      <div class="col">
+        <div class="card">
+          <div class="card-head">
+            <h2>Webcam Scanner (Rx)</h2>
+            <button id="btn-switch-cam" class="btn btn-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8M7 21.9l-4-4 4-4"/>
+                <path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/>
+              </svg>
+              Switch Camera
+            </button>
+          </div>
+          <div class="preview-wrap">
+            <video id="camera-preview" playsinline muted></video>
+            <div id="camera-overlay" class="overlay"></div>
+          </div>
+          <div id="scan-status" class="status">Initializing camera…</div>
+          <input id="fallback-camera-input" type="file" accept="image/*" class="hidden" />
+        </div>
+      </div>
+
+      <!-- RIGHT: QR output + controls -->
+      <div class="col">
+        <!-- SEND UI -->
+        <div id="ui-send">
+          <div class="card">
+            <h2 style="margin-bottom:1rem;">Transmit a File</h2>
+            <div class="field">
+              <label for="file-input">File (≤ 50 KB recommended)</label>
+              <input id="file-input" type="file" />
+            </div>
+            <div class="field">
+              <label for="chunk-size-select">Packet size (base64 chars / QR)</label>
+              <select id="chunk-size-select">
+                <option value="100">Small — 100 (High Reliability)</option>
+                <option value="250" selected>Medium — 250 (Default)</option>
+                <option value="500">Large — 500 (Laptop-Laptop)</option>
+                <option value="800">Max — 800 (Pro Webcam)</option>
+              </select>
+            </div>
+            <button id="btn-start-tx" class="btn btn-primary" disabled>Start Transmission</button>
+            <div id="tx-progress-container" class="progress hidden">
+              <div class="bar-track"><div id="tx-progress-bar" class="bar-fill"></div></div>
+              <div id="tx-progress-text" class="progress-text mono">0 / 0 chunks</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECV UI -->
+        <div id="ui-recv" class="hidden">
+          <div class="card">
+            <h2 style="margin-bottom:1rem;">Receive a File</h2>
+            <div id="rx-status-text" class="status">Point the camera at the sender's QR codes.</div>
+            <div id="rx-progress-container" class="progress hidden">
+              <div class="bar-track"><div id="rx-progress-bar" class="bar-fill"></div></div>
+              <div id="rx-progress-text" class="progress-text mono">0 / 0 chunks</div>
+            </div>
+            <button id="btn-download" class="btn btn-green hidden" style="margin-top:1rem;">Save Received File</button>
+          </div>
+        </div>
+
+        <!-- QR canvas: shared output surface for both modes -->
+        <div class="card qr-wrap">
+          <canvas id="qr-canvas" width="300" height="300"></canvas>
+          <div id="qr-status" class="status">Idle state.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Offscreen canvas for jsQR frame grabs -->
+  <canvas id="camera-canvas" class="hidden"></canvas>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

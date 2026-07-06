@@ -1,0 +1,45 @@
+{
+  "note": "Whole-file compression; compress() ships the smallest. deflate=CompressionStream, lzma=lzma-js level6.",
+  "rows": [
+    {
+      "file": "repetitive-text",
+      "none": 10240,
+      "deflate": 78,
+      "lzma": 144,
+      "chosen": "deflate",
+      "chosenBytes": 78,
+      "ratio": 131.28,
+      "savedPct": 99.2
+    },
+    {
+      "file": "prose-text",
+      "none": 9420,
+      "deflate": 170,
+      "lzma": 232,
+      "chosen": "deflate",
+      "chosenBytes": 170,
+      "ratio": 55.41,
+      "savedPct": 98.2
+    },
+    {
+      "file": "source-code (tx.js)",
+      "none": 5140,
+      "deflate": 1931,
+      "lzma": 1996,
+      "chosen": "deflate",
+      "chosenBytes": 1931,
+      "ratio": 2.66,
+      "savedPct": 62.4
+    },
+    {
+      "file": "incompressible",
+      "none": 10240,
+      "deflate": 10245,
+      "lzma": 10300,
+      "chosen": "none",
+      "chosenBytes": 10240,
+      "ratio": 1,
+      "savedPct": 0
+    }
+  ]
+}

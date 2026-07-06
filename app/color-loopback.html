@@ -1,0 +1,120 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>RUNNING</title></head><body>
+<pre id="out">running…</pre>
+<script src="vendor/qrious.min.js"></script>
+<script src="vendor/jsQR.min.js"></script>
+<script type="module">
+// color-loopback.html — Phase 4.3 E2E: blind-fire packets over 6 Gray-coded color planes,
+// canvas→canvas with the synthetic 4.0 channel + per-frame strip calibration. No camera.
+// Headless-run via scripts/bench/color-loopback.mjs; results land in #out as JSON.
+import { BlindFireSender } from './js/blindfire-tx.js';
+import { BlindFireReceiver } from './js/blindfire-rx.js';
+import { composeModulesGrid, decodeSIC, simulateChannel, PEDESTAL } from './js/colorplane.js';
+import { stripPatches, estimateModel } from './js/calibrate.js';
+import { FALLBACK_MODEL, linearize } from './js/channelstats.js';
+
+const ALLOC = { R: 2, G: 2, B: 2 };          // 6 planes, 4 levels/channel (gate-3 target)
+const BLOCK = 250;                            // packet = 266 B -> same QR version per plane
+const SCALE = 4;                              // px per module (canvas render scale)
+function mulberry32(seed){let a=seed>>>0;return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+
+async function main() {
+  // deterministic 6 KB binary file
+  const file = new Uint8Array(25 * 1024);
+  { const r = mulberry32(99); for (let i = 0; i < file.length; i++) file[i] = (r() * 256) | 0; }
+  const srcSha = await crypto.subtle.digest('SHA-256', file);
+
+  // per-frame calibration: observe the strip through the synthetic channel, estimate model
+  const disp = stripPatches();
+  const rngStrip = mulberry32(555);
+  const obsStrip = disp.map((rgbDisp) => {
+    const N = 256;
+    const rgb = { R: new Uint8Array(N).fill(rgbDisp[0]), G: new Uint8Array(N).fill(rgbDisp[1]), B: new Uint8Array(N).fill(rgbDisp[2]) };
+    const o = simulateChannel(rgb, FALLBACK_MODEL, rngStrip);
+    const meanLin = [], std = [];
+    ['R','G','B'].forEach((ch) => {
+      const a = o[ch];
+      meanLin.push(a.reduce((s,v)=>s+linearize(v),0)/N);
+      const mu = a.reduce((s,v)=>s+v,0)/N;
+      std.push(Math.sqrt(a.reduce((s,v)=>s+(v-mu)**2,0)/N));
+    });
+    return { meanLin, std };
+  });
+  const estModel = estimateModel(disp, obsStrip);
+
+  const tx = await BlindFireSender.create(file, { blockSize: BLOCK, fileId: 0x4444 });
+  const rx = new BlindFireReceiver();
+  const noise = mulberry32(777);
+
+  // helper canvases
+  const qrCv = Object.assign(document.createElement('canvas'), {});
+  const qr = new QRious({ element: qrCv, level: 'M', size: 600 });
+  const work = document.createElement('canvas');
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+
+  let frames = 0, planeDecodeFail = 0, planesTried = 0;
+  const packetsToPlane = (pkt) => { let s=''; for (const b of pkt) s += String.fromCharCode(b); return s; };
+
+  const T0 = performance.now();
+  while (!rx.done && frames < 400) {
+    frames++;
+    // 6 packets -> 6 QR pixel-bitmaps (identical geometry: same length + same EC)
+    const bitmaps = [];
+    let W = 0;
+    for (let p = 0; p < 6; p++) {
+      qr.value = packetsToPlane(tx.nextPacket());
+      if (!W) { W = qr.canvas.width; work.width = W; work.height = W; }
+      wctx.drawImage(qr.canvas, 0, 0, W, W);
+      const d = wctx.getImageData(0, 0, W, W).data;
+      const bits = new Uint8Array(W * W);
+      for (let i = 0; i < W * W; i++) bits[i] = d[4 * i] < 128 ? 1 : 0;  // dark=1
+      bitmaps.push(bits);
+    }
+    // compose color frame (per-pixel), push through the TRUE channel, decode with ESTIMATE
+    const rgb = composeModulesGrid(bitmaps, ALLOC, PEDESTAL);
+    const obs = simulateChannel(rgb, FALLBACK_MODEL, noise);
+    const back = decodeSIC(obs, ALLOC, estModel, PEDESTAL);
+    // each recovered plane -> 3x3 majority filter (kills salt-pepper from per-pixel
+    // channel noise; a real camera integrates over the module area anyway) -> jsQR
+    const maj = (bits) => {
+      const out = new Uint8Array(W * W);
+      for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+        let s = 0, c = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const yy = y + dy, xx = x + dx;
+          if (yy < 0 || xx < 0 || yy >= W || xx >= W) continue;
+          s += bits[yy * W + xx]; c++;
+        }
+        out[y * W + x] = s * 2 > c ? 1 : 0;
+      }
+      return out;
+    };
+    for (let p = 0; p < 6; p++) {
+      planesTried++;
+      const f = maj(back[p]);
+      const img = new Uint8ClampedArray(W * W * 4);
+      for (let i = 0; i < W * W; i++) { const v = f[i] ? 0 : 255; img[4*i]=img[4*i+1]=img[4*i+2]=v; img[4*i+3]=255; }
+      const code = jsQR(img, W, W, { inversionAttempts: 'dontInvert' });
+      if (!code || !code.binaryData || !code.binaryData.length) { planeDecodeFail++; continue; }
+      rx.onPacket(new Uint8Array(code.binaryData));
+    }
+  }
+  const ms = performance.now() - T0;
+
+  let shaExact = false;
+  if (rx.done) {
+    const out = await rx.result();
+    const outSha = await crypto.subtle.digest('SHA-256', out);
+    shaExact = new Uint8Array(srcSha).every((v, i) => v === new Uint8Array(outSha)[i]);
+  }
+  const result = {
+    done: rx.done, shaExact, fileBytes: file.length, k: tx.k,
+    frames, planesTried, planeDecodeFail,
+    packetsFed: rx.packetsSeen, overheadEpsPct: +(100 * (rx.packetsSeen / tx.k - 1)).toFixed(1),
+    levelsPerChannel: 4, planesPerFrame: 6, blockSize: BLOCK,
+    qrPixels: undefined, ms: Math.round(ms),
+  };
+  document.getElementById('out').textContent = JSON.stringify(result);
+  document.title = 'DONE';
+}
+main().catch((e) => { document.getElementById('out').textContent = 'ERROR: ' + (e.stack || e); document.title = 'ERROR'; });
+</script></body></html>

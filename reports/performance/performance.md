@@ -39,3 +39,14 @@ late-joining receivers, with **no retransmit logic at all**.
 - **Open item carried to closeout**: QRious byte-mode at v25–40 is harness-assumed, not yet
   browser-verified (v15–20 results already clear the gate). Verify or swap encoder during app
   integration; bit-plane color multiplexing (Phase 4) reuses the same verification page.
+
+## Phase 4 — color multiplexing (2026-07-07, gate 3 PASS)
+
+6 Gray-coded bit-planes/frame (4 levels/channel, pedestal-64 grid, SIC decode, per-frame
+strip calibration, per-plane QR EC): headless-Chrome loopback transfers 25 KB SHA-exact
+with **zero plane failures and 0 % fountain overhead** (k=103); under 14.6 % plane loss the
+fountain still delivers SHA-exact. Measured config = **≈17.7× B0** (block 250) before the
+capacity lever. Key findings en route: gamma×crosstalk compresses dark level gaps (naive
+decode 3–6 % SER → SIC+pedestal 0.86 %); allocator derates/EC-escalates on dim channels;
+G L=8 does not survive fallback crosstalk. Real-camera σ/MTF measurement remains user-run
+(`app/channel-check.html`).

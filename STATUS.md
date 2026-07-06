@@ -10,7 +10,7 @@
 
 1. Read in order: `CLAUDE.md` (workflow rules) → `Plan.md` (master plan) → this file (`STATUS.md`) → `plans/phase2_baseline.md` + `_impl.md`. (Phase 1 pair archived in `plans/archives/`.)
 2. Auto-memory (if any) loads from `~/.claude/projects/-home-swshin-test-qr-transfer/memory/`.
-3. **Next action**: 4.0 done (estimator 9/9, fallback model locked; real camera run = user, channel-check.html). 4.1 done (SIC+pedestal-64 codec, 10/10; floor 4/4/4 worst-plane SER 0.86%; G8 stretch fails fallback crosstalk; criterion refinement awaiting sign-off). Next: 4.2 calibration+allocator -> 4.3 loopback E2E -> gate 3. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
+3. **Next action**: 4.0 done (estimator 9/9, fallback model locked; real camera run = user, channel-check.html). **Phase 4 COMPLETE (gate 3 PASS)**: 4.2 calibration (est-vs-truth 0.03pp) + EC-aware allocator; 4.3 color loopback E2E — 25 KB file, k=103, 6 planes/frame (4/4/4, ped 64), 0 plane failures, fountain eps 0%, SHA-exact; plane-loss stress (14.6% dead planes) still SHA-exact. ~17.7x B0 at block 250 before capacity lever. Real-camera validation = user-run followup. To run the app: `python3 -m http.server` in `app/`, open `index.html` (transfer) or `loopback.html` (self-test). Tests: `node app/js/protocol.test.mjs && node app/js/e2e.test.mjs && node app/js/compress.test.mjs`.
 
 ## Completed
 

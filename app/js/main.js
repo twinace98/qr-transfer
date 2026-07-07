@@ -270,8 +270,20 @@ function triggerDownload() {
 
 // --- Mode switch ------------------------------------------------------------
 
+function updateCamera() {
+  // one-way SEND needs no camera at all; everything else scans.
+  const need = !isBF() || mode === 'recv';
+  if (need) { scanner.start(); }
+  else {
+    scanner.stop();
+    $('scan-status').textContent = 'camera off — one-way transmit needs no camera';
+    $('scan-status').classList.remove('err');
+  }
+}
+
 function switchMode(next) {
   mode = next;
+  updateCamera();
   if (next === 'recv' && isColor()) startColorRx(); else stopColorRx();
   $('tab-send').classList.toggle('active', mode === 'send');
   $('tab-recv').classList.toggle('active', mode === 'recv');
@@ -378,6 +390,7 @@ function init() {
   $('color-mode').addEventListener('change', () => {
     if (!isBF()) { $('color-mode').checked = false; alert('Color ×6 requires the one-way (blind-fire) transport.'); return; }
     resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.');
+    updateCamera();
     if (mode === 'recv' && isColor()) startColorRx();
   });
   $('file-input').addEventListener('change', (e) => {
@@ -386,6 +399,7 @@ function init() {
   $('btn-start-tx').addEventListener('click', startTransmission);
   document.querySelectorAll('input[name="transport"]').forEach((r) => r.addEventListener('change', () => {
     resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.');
+    updateCamera();
     const bf = isBF();
     $('chunk-size-label').textContent = bf ? 'Block size (bytes / QR frame)' : 'Packet size (base64 chars / QR)';
     if (bf) $('chunk-size-select').value = '100';   // sparser QR (~v6) — real cameras detect it far more reliably
@@ -399,7 +413,7 @@ function init() {
   resetTx();
   resetRx();
   display.update(IDLE_VALUE, 'Idle state.');
-  scanner.start();
+  updateCamera();   // replica: scan immediately; one-way send: no camera prompt at all
 }
 
 window.addEventListener('DOMContentLoaded', init);

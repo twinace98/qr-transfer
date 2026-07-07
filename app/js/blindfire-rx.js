@@ -58,6 +58,14 @@ export class BlindFireReceiver {
           fileName: dec.decode(p.payload.subarray(1, 1 + nameLen)),
           mimeType: dec.decode(rawMime.subarray(0, end)),
         };
+        const q = 1 + nameLen + end + 1;               // past mime NUL
+        if (p.payload[q] === 0xC0 && q + 7 <= p.payload.length) {   // color announce
+          this.meta.color = {
+            alloc: { R: p.payload[q + 1], G: p.payload[q + 2], B: p.payload[q + 3] },
+            pedestal: p.payload[q + 4],
+            bodyPx: (p.payload[q + 5] << 8) | p.payload[q + 6],
+          };
+        }
       }
       return false;
     }

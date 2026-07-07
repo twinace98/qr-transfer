@@ -22,7 +22,7 @@ let downloadUrl = null;
 let bfTimer = null;          // broadcast interval
 let bfSender = null;
 let bfRx = null;
-const isBF = () => $('bf-mode').checked;
+const isBF = () => document.querySelector('input[name="transport"]:checked').value === 'blindfire';
 const fps = () => parseInt($('fps-select').value, 10);
 const META_EVERY = 32;
 const bytesToLatin1 = (pkt) => { let t = ''; for (const b of pkt) t += String.fromCharCode(b); return t; };
@@ -232,7 +232,14 @@ function init() {
     $('btn-start-tx').disabled = e.target.files.length === 0;
   });
   $('btn-start-tx').addEventListener('click', startTransmission);
-  $('bf-mode').addEventListener('change', () => { resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.'); });
+  document.querySelectorAll('input[name="transport"]').forEach((r) => r.addEventListener('change', () => {
+    resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.');
+    const bf = isBF();
+    $('chunk-size-label').textContent = bf ? 'Block size (bytes / QR frame)' : 'Packet size (base64 chars / QR)';
+    $('transport-hint').textContent = bf
+      ? 'One-way: sender broadcasts forever at the chosen FPS; receiver just points the camera — join any time, no ACKs.'
+      : "Two-way: pick the file on this device, point the other device's camera here (and vice versa for ACKs).";
+  }));
   $('btn-download').addEventListener('click', triggerDownload);
   $('fallback-camera-input').addEventListener('change', handleFallbackImage);
 

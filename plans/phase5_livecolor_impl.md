@@ -27,3 +27,13 @@
 
 ## Locked (from Phase 4): alloc 4/4/4, PEDESTAL=64, SIC×2, serL/serM 0.9/1.5 %, EC per
 allocator (loopback planes share EC-M for version alignment).
+
+## Addenda (2026-07-07, user-approved)
+- **Meta packet color fields** (one-way announce, not negotiation): after the mime string's
+  NUL, marker byte 0xC0 followed by [allocR|allocG|allocB|pedestal|bodyPx_hi|bodyPx_lo].
+  Absent marker = B/W stream (backward compatible). RX auto-configures from any meta frame.
+- **RX warm-up**: first 2 color frames feed the strip estimator only (median-stabilized
+  M̂/b̂), decode trusted from frame 3 (or earlier if two estimates agree within tolerance).
+- **UI usability pass**: transport as radio pair with one-line descriptions (two-way ACK vs
+  one-way fountain), link settings grouped (FPS + packet size with per-mode label), color
+  toggle appears once 5.2 lands; irrelevant controls disabled per mode.

@@ -21,19 +21,31 @@
       <button id="tab-recv" class="tab-btn" data-mode="recv">Receive (Download)</button>
     </div>
 
-    <div class="card" style="margin-bottom:1rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;">
-      <label style="display:flex; align-items:center; gap:.4rem; cursor:pointer;">
-        <input type="checkbox" id="bf-mode" />
-        <strong>Blind-fire (one-way)</strong>&nbsp;— fountain broadcast, no ACKs
-      </label>
-      <label style="display:flex; align-items:center; gap:.4rem;">
-        FPS
-        <select id="fps-select">
-          <option value="10" selected>10</option>
-          <option value="15">15</option>
-          <option value="20">20</option>
-        </select>
-      </label>
+    <div class="card" style="margin-bottom:1rem;">
+      <h2 style="margin-bottom:.6rem;">Transport</h2>
+      <div style="display:flex; gap:2rem; flex-wrap:wrap;">
+        <label style="display:flex; gap:.5rem; cursor:pointer; align-items:flex-start;">
+          <input type="radio" name="transport" value="replica" checked style="margin-top:.2rem;" />
+          <span><strong>Two-way (ACK)</strong><br/>
+          <small>original protocol — both devices show QRs; reliable, slower</small></span>
+        </label>
+        <label style="display:flex; gap:.5rem; cursor:pointer; align-items:flex-start;">
+          <input type="radio" name="transport" value="blindfire" style="margin-top:.2rem;" />
+          <span><strong>One-way (blind-fire)</strong><br/>
+          <small>fountain broadcast — receiver only watches; loss-tolerant, fast</small></span>
+        </label>
+        <label style="display:flex; align-items:center; gap:.4rem; margin-left:auto;">
+          <span><strong>FPS</strong><br/><small>QR frames/sec</small></span>
+          <select id="fps-select">
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+      </div>
+      <div id="transport-hint" class="status" style="margin-top:.5rem;">
+        Two-way: pick the file on this device, point the other device's camera here (and vice versa for ACKs).
+      </div>
     </div>
 
     <div class="cols">
@@ -71,7 +83,7 @@
               <input id="file-input" type="file" />
             </div>
             <div class="field">
-              <label for="chunk-size-select">Packet size (base64 chars / QR)</label>
+              <label for="chunk-size-select" id="chunk-size-label">Packet size (base64 chars / QR)</label>
               <select id="chunk-size-select">
                 <option value="100">Small — 100 (High Reliability)</option>
                 <option value="250" selected>Medium — 250 (Default)</option>

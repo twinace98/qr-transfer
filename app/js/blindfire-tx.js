@@ -93,13 +93,22 @@ export class BlindFireSender {
    * QR version stays constant. Broadcast periodically (one-way self-description) so a
    * late-joining receiver learns fileName/mime; k and file_len ride the header as always.
    */
-  metaPacket({ fileName = 'file.bin', mimeType = 'application/octet-stream' } = {}) {
+  metaPacket({ fileName = 'file.bin', mimeType = 'application/octet-stream', color = null } = {}) {
     const name = new TextEncoder().encode(fileName).subarray(0, 255);
     const mime = new TextEncoder().encode(mimeType);
     const payload = new Uint8Array(this.blockSize);
     payload[0] = name.length;
     payload.set(name, 1);
-    payload.set(mime.subarray(0, Math.max(0, this.blockSize - 1 - name.length)), 1 + name.length);
+    payload.set(mime.subarray(0, Math.max(0, this.blockSize - 2 - name.length)), 1 + name.length);
+    let p = 1 + name.length + mime.length;            // NUL after mime is the zero padding
+    p += 1;
+    // one-way color announce (0xC0 marker): alloc bits, pedestal, body px — RX auto-configures
+    if (color && p + 7 <= this.blockSize) {
+      payload[p++] = 0xC0;
+      payload[p++] = color.alloc.R; payload[p++] = color.alloc.G; payload[p++] = color.alloc.B;
+      payload[p++] = color.pedestal;
+      payload[p++] = (color.bodyPx >> 8) & 0xFF; payload[p++] = color.bodyPx & 0xFF;
+    }
     return buildPacket({ fileId: this.fileId, k: this.k, fileLen: this.fileLen, seed: 0, payload });
   }
 }

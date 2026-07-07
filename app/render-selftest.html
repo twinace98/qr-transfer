@@ -4,33 +4,78 @@
 <script src="vendor/jsQR.min.js"></script>
 <script src="vendor/qrious.min.js"></script>
 <script type="module">
+// exact app color-TX path repro + staged decode diagnostics
 import { BlindFireSender } from './js/blindfire-tx.js';
-import { createDisplay } from './js/qr.js';
+import { composeFrameRGBA, sampleFrame, frameLayout } from './js/colorframe.js';
+import { decodeSIC, PEDESTAL, composeModulesGrid } from './js/colorplane.js';
+import { stripPatches, estimateModel } from './js/calibrate.js';
+import { linearize } from './js/channelstats.js';
+const ALLOC = { R: 2, G: 2, B: 2 };
 const res = [];
+const tx = await BlindFireSender.create(new Uint8Array(11000).map((_,i)=>(i*13)&0xff), { blockSize: 100, fileId: 5 });
+const qrOff = document.createElement('canvas');
+const qrR = new QRious({ element: qrOff, level: 'M', size: 600 });
+const grab = document.createElement('canvas');
+const gctx = grab.getContext('2d', { willReadFrequently: true });
+const bitmaps = []; let W = 0;
+for (let p = 0; p < 6; p++) {
+  const pkt = tx.nextPacket();
+  let s=''; for (const b of pkt) s += String.fromCharCode(b);
+  qrR.value = s;
+  if (!W) { W = qrR.canvas.width; grab.width = W; grab.height = W; }
+  gctx.drawImage(qrR.canvas, 0, 0, W, W);
+  const d = gctx.getImageData(0, 0, W, W).data;
+  const bits = new Uint8Array(W * W);
+  for (let i = 0; i < W * W; i++) bits[i] = d[4 * i] < 128 ? 1 : 0;
+  bitmaps.push(bits);
+}
+res.push(`W=${W}`);
+// direct plane sanity BEFORE compose: jsQR the raw bitmap re-render
+{
+  const rgba = new Uint8ClampedArray(W*W*4);
+  for (let i=0;i<W*W;i++){const v=bitmaps[0][i]?0:255;rgba[4*i]=rgba[4*i+1]=rgba[4*i+2]=v;rgba[4*i+3]=255;}
+  const c = jsQR(rgba, W, W, {inversionAttempts:'dontInvert'});
+  res.push('raw-bitmap0: ' + (c ? 'ok' : 'FAIL'));
+}
+const frame = composeFrameRGBA(bitmaps, W, ALLOC);
+// app path: putImageData to visible canvas then read back
 const cv = document.getElementById('cv');
-const scan = () => {
-  const ctx = cv.getContext('2d');
-  const img = ctx.getImageData(0, 0, cv.width, cv.height);
-  const c = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-  return c ? (c.binaryData ? `bin ${c.binaryData.length}B` : `txt ${c.data.length}`) : 'NOT-DETECTED';
-};
-const disp = createDisplay(cv);                       // app path: reused QRious instance
-res.push('idle: ' + scan() + ` (canvas ${cv.width})`);
-const tx = await BlindFireSender.create(new Uint8Array(3000).map((_,i)=>i*7&0xff), { blockSize: 100, fileId: 9 });
-const pkt = tx.nextPacket();
-let s = ''; for (const b of pkt) s += String.fromCharCode(b);
-disp.setLevel('L');
-disp.update(s);
-res.push('bf-L block100: ' + scan() + ` (canvas ${cv.width})`);
-disp.update(s + '');                                   // second update, same instance
-res.push('bf-L again: ' + scan());
-// fresh instance for contrast (like blindfire-check which PASSED)
-const cv2 = document.createElement('canvas');
-new QRious({ element: cv2, size: 560, level: 'L', value: s });
-const ctx2 = cv2.getContext('2d');
-const img2 = ctx2.getImageData(0, 0, cv2.width, cv2.height);
-const c2 = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: 'dontInvert' });
-res.push('fresh-instance: ' + (c2 ? (c2.binaryData ? `bin ${c2.binaryData.length}B` : 'txt') : 'NOT-DETECTED'));
+cv.width = frame.width; cv.height = frame.height;
+cv.getContext('2d').putImageData(new ImageData(frame.data, frame.width, frame.height), 0, 0);
+const img = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height);
+res.push(`canvas=${cv.width} vs layout=${frameLayout(600).total}`);
+// discriminator: canvas round-trip lossless? + decode from the PLAIN frame object
+let diff=0; for (let i=0;i<frame.data.length;i++) if (img.data[i]!==frame.data[i]) diff++;
+res.push('canvasRoundtripDiffBytes=' + diff);
+const direct = sampleFrame(frame, 600);
+{
+  const est0 = { crosstalk: [[1,0,0],[0,1,0],[0,0,1]], offset: [0,0,0], sigma8: {R:1,G:1,B:1} };
+  const b0 = decodeSIC(direct.body, ALLOC, est0, PEDESTAL);
+  let e=0; for (let m=0;m<W*W;m++) if (b0[0][m]!==bitmaps[0][m]) e++;
+  res.push('directPlane0SER%=' + (100*e/(W*W)).toFixed(2));
+}
+const { observedStrip, body } = sampleFrame(img, 600);
+const disp = stripPatches();
+const obs = observedStrip.map((samples) => {
+  const meanLin=[0,0,0],mu=[0,0,0],std=[0,0,0];
+  for (const s of samples) for (let c=0;c<3;c++){meanLin[c]+=linearize(s[c])/samples.length;mu[c]+=s[c]/samples.length;}
+  for (const s of samples) for (let c=0;c<3;c++) std[c]+=(s[c]-mu[c])**2/samples.length;
+  return {meanLin,std:std.map(Math.sqrt)};
+});
+const est = estimateModel(disp, obs);
+res.push('estM00=' + est.crosstalk[0][0].toFixed(3) + ' b0=' + est.offset[0].toFixed(4));
+const back = decodeSIC(body, ALLOC, est, PEDESTAL);
+// plane SER vs original bitmaps
+const sers = back.map((pl,i)=>{let e=0;for(let m=0;m<W*W;m++)if(pl[m]!==bitmaps[i][m])e++;return (100*e/(W*W)).toFixed(2);});
+res.push('planeSER%=[' + sers.join(',') + ']');
+let ok=0;
+for (let p=0;p<6;p++){
+  const rgba = new Uint8ClampedArray(W*W*4);
+  for (let i=0;i<W*W;i++){const v=back[p][i]?0:255;rgba[4*i]=rgba[4*i+1]=rgba[4*i+2]=v;rgba[4*i+3]=255;}
+  const c = jsQR(rgba, W, W, {inversionAttempts:'dontInvert'});
+  if (c && c.binaryData && c.binaryData.length) ok++;
+}
+res.push(`jsQR planes ok=${ok}/6`);
 document.getElementById('out').textContent = res.join(' | ');
-document.title = 'DONE';
+document.title='DONE';
 </script></body></html>

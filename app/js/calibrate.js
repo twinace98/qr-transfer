@@ -39,12 +39,16 @@ export function estimateModel(displayed, observed) {
     const rhs = [0, 0, 0, 0];
     for (let p = 0; p < displayed.length; p++) {
       const y = observed[p].meanLin[c];
-      // saturation-aware: a clamped response (sensor/display headroom) breaks the affine
-      // model and drags the fit — measured: the white patch alone costs ~0.5 pp SER.
-      if (y > linearize(250) || y < linearize(2)) continue;
+      // saturation-aware: a TOP-clamped response (sensor/display headroom) breaks the
+      // affine model (measured: the white patch alone cost ~0.5 pp SER). Do NOT drop
+      // low/zero responses — dark patches are exactly the crosstalk anchors; dropping
+      // them makes the normal equations singular on clean frames (bug found in 5.x
+      // self-test: est off-diagonals went garbage -> 48 % plane SER).
+      if (y > linearize(250)) continue;
       const x = [linearize(displayed[p][0]), linearize(displayed[p][1]), linearize(displayed[p][2]), 1];
       for (let i = 0; i < 4; i++) { rhs[i] += x[i] * y; for (let j = 0; j < 4; j++) A[i][j] += x[i] * x[j]; }
     }
+    for (let i = 0; i < 4; i++) A[i][i] += 1e-9;   // ridge: keep degenerate strips solvable
     const sol = solve4(A, rhs);
     M.push([sol[0], sol[1], sol[2]]);
     off.push(sol[3]);

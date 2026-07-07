@@ -52,7 +52,8 @@ Reference protocol (decoded from source, 2026-07-06):
 | 1 | Modular replica byte-identical in behavior to the original app. ✅ done 2026-07-06 |
 | 2 | Reproducible benchmark harness + quantified baseline throughput `B0`. |
 | 3 | One-way blind-fire transport (compression + LT fountain) at ≥ 3× `B0`, SHA-256-exact. |
-| 4 | (Stretch, gated) color multiplexing for additional bytes/frame. |
+| 4 | (Stretch, gated) color multiplexing for additional bytes/frame. ✅ done 2026-07-07 (gate 3 PASS, loopback) |
+| 5 | Live color UI in the unified app (both transports) + real-device validation (gate 4). |
 
 ---
 

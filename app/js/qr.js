@@ -21,5 +21,7 @@ export function createDisplay(canvasEl, statusEl = null) {
       qr.value = value;
       if (statusEl && statusText != null) statusEl.textContent = statusText;
     },
+    /** Blind-fire uses EC 'L' (CRC16 pre-gates corruption); replica stays 'M'. */
+    setLevel(level) { qr.level = level; },
   };
 }

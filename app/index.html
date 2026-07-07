@@ -12,14 +12,28 @@
 <body>
   <header>
     <h1>QR Optical FTP</h1>
-  <p style="font-size:13px"><a href="blindfire.html">Blind-fire mode (one-way, Phase 3) &rarr;</a></p>
-    <p>Air-gapped file transfer via webcam and screen. (Faithful replica)</p>
+    <p>Air-gapped file transfer via webcam and screen.</p>
   </header>
 
   <main>
     <div class="tabs">
       <button id="tab-send" class="tab-btn active" data-mode="send">Transmit (Upload)</button>
       <button id="tab-recv" class="tab-btn" data-mode="recv">Receive (Download)</button>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:.4rem; cursor:pointer;">
+        <input type="checkbox" id="bf-mode" />
+        <strong>Blind-fire (one-way)</strong>&nbsp;— fountain broadcast, no ACKs
+      </label>
+      <label style="display:flex; align-items:center; gap:.4rem;">
+        FPS
+        <select id="fps-select">
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+      </label>
     </div>
 
     <div class="cols">

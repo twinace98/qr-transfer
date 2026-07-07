@@ -7,6 +7,8 @@ import { createDisplay } from './qr.js';
 import { createScanner } from './camera.js';
 import { Transmitter, fileToBase64 } from './tx.js';
 import { Receiver, base64ToBlob } from './rx.js';
+import { BlindFireSender } from './blindfire-tx.js';
+import { BlindFireReceiver } from './blindfire-rx.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,6 +18,14 @@ let scanner;                 // webcam scanner
 let tx = null;               // active Transmitter
 let rx = null;               // active Receiver
 let downloadUrl = null;
+// blind-fire (opt-in via #bf-mode checkbox; replica path untouched when off)
+let bfTimer = null;          // broadcast interval
+let bfSender = null;
+let bfRx = null;
+const isBF = () => $('bf-mode').checked;
+const fps = () => parseInt($('fps-select').value, 10);
+const META_EVERY = 32;
+const bytesToLatin1 = (pkt) => { let t = ''; for (const b of pkt) t += String.fromCharCode(b); return t; };
 
 function flashOverlay() {
   const o = $('camera-overlay');
@@ -26,6 +36,7 @@ function flashOverlay() {
 // --- Scan routing -----------------------------------------------------------
 
 function handleScannedData(data) {
+  if (isBF()) return;                        // blind-fire consumes binary frames only
   const frame = parseFrame(data);
   if (!frame) return;
   if (mode === 'send' && frame.dir === 'RX' && tx) {
@@ -35,11 +46,35 @@ function handleScannedData(data) {
   }
 }
 
+async function handleScannedBinary(bytes) {
+  if (!isBF() || mode !== 'recv' || !bfRx || bfRx.done) return;
+  const finished = bfRx.onPacket(bytes);
+  if (bfRx.dec) {
+    const cur = bfRx.dec.solved, total = bfRx.dec.k;
+    $('rx-progress-container').classList.remove('hidden');
+    $('rx-progress-text').textContent = `${cur} / ${total} blocks`;
+    $('rx-progress-bar').style.width = `${Math.round((cur / total) * 100)}%`;
+  }
+  if (finished) {
+    const out = await bfRx.result();
+    const meta = bfRx.meta || {};
+    const blob = new Blob([out], { type: meta.mimeType || 'application/octet-stream' });
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    downloadUrl = URL.createObjectURL(blob);
+    rx._fileName = meta.fileName || 'received_file.bin';
+    $('rx-status-text').textContent = `Transfer Complete! (${out.length} bytes, one-way)`;
+    $('rx-status-text').classList.add('good');
+    $('btn-download').classList.remove('hidden');
+  }
+}
+
 // --- Transmit ---------------------------------------------------------------
 
 function resetTx() {
   if (tx) tx.stop();
   tx = null;
+  if (bfTimer) { clearInterval(bfTimer); bfTimer = null; }
+  bfSender = null;
   $('file-input').value = '';
   $('file-input').disabled = false;
   $('chunk-size-select').disabled = false;
@@ -58,6 +93,26 @@ async function startTransmission() {
   $('tx-progress-container').classList.remove('hidden');
 
   const chunkSize = parseInt($('chunk-size-select').value, 10);
+
+  if (isBF()) {                              // one-way fountain broadcast at the chosen FPS
+    display.setLevel('L');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    bfSender = await BlindFireSender.create(bytes, { blockSize: chunkSize });
+    const meta = { fileName: file.name, mimeType: file.type || 'application/octet-stream' };
+    let frames = 0;
+    $('tx-progress-container').classList.remove('hidden');
+    bfTimer = setInterval(() => {
+      const pkt = frames % META_EVERY === 0 ? bfSender.metaPacket(meta) : bfSender.nextPacket();
+      frames++;
+      display.update(bytesToLatin1(pkt),
+        `blind-fire: k=${bfSender.k}, frame ${frames} @${fps()} fps (leave running)`);
+      $('tx-progress-text').textContent = `frame ${frames} (k=${bfSender.k})`;
+      $('tx-progress-bar').style.width = '100%';
+    }, 1000 / fps());
+    return;
+  }
+
+  display.setLevel('M');
   const base64 = await fileToBase64(file);
 
   tx = new Transmitter({ chunkSize });
@@ -72,12 +127,13 @@ async function startTransmission() {
     $('tx-progress-text').textContent = 'Done!';
   };
   tx.loadBase64(base64, { fileName: file.name, mimeType: file.type });
-  tx.start();
+  tx.start(Math.max(50, Math.round(1000 / fps())));   // replica tick paced by the FPS select
 }
 
 // --- Receive ----------------------------------------------------------------
 
 function resetRx() {
+  bfRx = new BlindFireReceiver();
   rx = new Receiver();
   rx.onProgress = (cur, total) => {
     $('rx-progress-container').classList.remove('hidden');
@@ -163,6 +219,7 @@ function init() {
     video: $('camera-preview'),
     canvas: $('camera-canvas'),
     onDecode: handleScannedData,
+    onDecodeBinary: handleScannedBinary,
     onStatus: (m) => { $('scan-status').textContent = m; $('scan-status').classList.remove('err'); },
     onError: showCameraError,
     onHit: flashOverlay,
@@ -175,6 +232,7 @@ function init() {
     $('btn-start-tx').disabled = e.target.files.length === 0;
   });
   $('btn-start-tx').addEventListener('click', startTransmission);
+  $('bf-mode').addEventListener('change', () => { resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.'); });
   $('btn-download').addEventListener('click', triggerDownload);
   $('fallback-camera-input').addEventListener('change', handleFallbackImage);
 

@@ -8,7 +8,7 @@ import { createScanner } from './camera.js';
 import { Transmitter, fileToBase64 } from './tx.js';
 import { Receiver, base64ToBlob } from './rx.js';
 import { BlindFireSender } from './blindfire-tx.js';
-import { BlindFireReceiver } from './blindfire-rx.js';
+import { BlindFireReceiver, parsePacket } from './blindfire-rx.js';
 import { composeFrameRGBA, sampleFrame, frameLayout } from './colorframe.js';
 import { decodeSIC, PEDESTAL } from './colorplane.js';
 import { stripPatches, estimateModel } from './calibrate.js';
@@ -326,6 +326,23 @@ function init() {
   $('tab-send').addEventListener('click', () => switchMode('send'));
   $('tab-recv').addEventListener('click', () => switchMode('recv'));
   $('btn-switch-cam').addEventListener('click', () => scanner.toggleFacing());
+  $('btn-selftest').addEventListener('click', () => {
+    // feed the DISPLAYED canvas straight into jsQR: separates rendering bugs from optics
+    const cv = $('qr-canvas'), ctx = cv.getContext('2d');
+    const img = ctx.getImageData(0, 0, cv.width, cv.height);
+    // eslint-disable-next-line no-undef
+    const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+    const out = $('selftest-result');
+    if (!code) { out.innerHTML = '<span class="err">NOT detected — rendering problem (report this)</span>'; return; }
+    if (code.binaryData && code.binaryData.length) {
+      const p = parsePacket(new Uint8Array(code.binaryData));
+      out.innerHTML = p
+        ? `<span class="good">OK: QR detected, ${code.binaryData.length} B, CRC valid (k=${p.k})</span> — rendering fine; failure is optics (distance/focus/size)`
+        : `QR detected, ${code.binaryData.length} B, but not a valid packet (CRC/magic)`;
+    } else {
+      out.textContent = `OK: QR detected, text ${code.data.length} chars — rendering fine; failure is optics`;
+    }
+  });
   $('btn-mirror').addEventListener('click', () => {
     const v = $('camera-preview');
     v.style.transform = v.style.transform === 'scaleX(-1)' ? '' : 'scaleX(-1)';
@@ -343,6 +360,7 @@ function init() {
     resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.');
     const bf = isBF();
     $('chunk-size-label').textContent = bf ? 'Block size (bytes / QR frame)' : 'Packet size (base64 chars / QR)';
+    if (bf) $('chunk-size-select').value = '100';   // sparser QR (~v6) — real cameras detect it far more reliably
     $('transport-hint').textContent = bf
       ? 'One-way: sender broadcasts forever at the chosen FPS; receiver just points the camera — join any time, no ACKs.'
       : "Two-way: pick the file on this device, point the other device's camera here (and vice versa for ACKs).";

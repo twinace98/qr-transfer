@@ -9,6 +9,10 @@ import { Transmitter, fileToBase64 } from './tx.js';
 import { Receiver, base64ToBlob } from './rx.js';
 import { BlindFireSender } from './blindfire-tx.js';
 import { BlindFireReceiver } from './blindfire-rx.js';
+import { composeFrameRGBA, sampleFrame, frameLayout } from './colorframe.js';
+import { decodeSIC, PEDESTAL } from './colorplane.js';
+import { stripPatches, estimateModel } from './calibrate.js';
+import { linearize } from './channelstats.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,7 +28,10 @@ let bfSender = null;
 let bfRx = null;
 const isBF = () => document.querySelector('input[name="transport"]:checked').value === 'blindfire';
 const fps = () => parseInt($('fps-select').value, 10);
-const META_EVERY = 32;
+const META_EVERY = 8;          // meta (fileName/mime/color) cadence — small files must still catch it
+const ALLOC = { R: 2, G: 2, B: 2 };
+const isColor = () => $('color-mode').checked && isBF();
+let colorRxTimer = null, colorWarm = 0;
 const bytesToLatin1 = (pkt) => { let t = ''; for (const b of pkt) t += String.fromCharCode(b); return t; };
 
 function flashOverlay() {
@@ -94,6 +101,44 @@ async function startTransmission() {
 
   const chunkSize = parseInt($('chunk-size-select').value, 10);
 
+  if (isColor()) {                           // 6-plane color broadcast (one-way)
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    bfSender = await BlindFireSender.create(bytes, { blockSize: chunkSize });
+    // offscreen QR renderer (EC-M so all planes share one version)
+    const qrOff = document.createElement('canvas');
+    // eslint-disable-next-line no-undef
+    const qrR = new QRious({ element: qrOff, level: 'M', size: 600 });
+    const grab = document.createElement('canvas');
+    const gctx = grab.getContext('2d', { willReadFrequently: true });
+    const cv = $('qr-canvas'), ctx = cv.getContext('2d');
+    let frames = 0;
+    $('tx-progress-container').classList.remove('hidden');
+    bfTimer = setInterval(() => {
+      const bitmaps = []; let W = 0;
+      for (let p = 0; p < 6; p++) {
+        const pkt = (frames % META_EVERY === 0 && p === 0)
+          ? bfSender.metaPacket({ fileName: file.name, mimeType: file.type || 'application/octet-stream',
+                                  color: { alloc: ALLOC, pedestal: PEDESTAL, bodyPx: 600 } })
+          : bfSender.nextPacket();
+        qrR.value = bytesToLatin1(pkt);
+        if (!W) { W = qrR.canvas.width; grab.width = W; grab.height = W; }
+        gctx.drawImage(qrR.canvas, 0, 0, W, W);
+        const d = gctx.getImageData(0, 0, W, W).data;
+        const bits = new Uint8Array(W * W);
+        for (let i = 0; i < W * W; i++) bits[i] = d[4 * i] < 128 ? 1 : 0;
+        bitmaps.push(bits);
+      }
+      frames++;
+      const frame = composeFrameRGBA(bitmaps, W, ALLOC);
+      cv.width = frame.width; cv.height = frame.height;
+      ctx.putImageData(new ImageData(frame.data, frame.width, frame.height), 0, 0);
+      $('qr-status').textContent = `color ×6 blind-fire: k=${bfSender.k}, frame ${frames} @${fps()} fps`;
+      $('tx-progress-text').textContent = `frame ${frames} (k=${bfSender.k}, 6 planes)`;
+      $('tx-progress-bar').style.width = '100%';
+    }, 1000 / fps());
+    return;
+  }
+
   if (isBF()) {                              // one-way fountain broadcast at the chosen FPS
     display.setLevel('L');
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -132,7 +177,57 @@ async function startTransmission() {
 
 // --- Receive ----------------------------------------------------------------
 
+function stopColorRx() {
+  if (colorRxTimer) { clearInterval(colorRxTimer); colorRxTimer = null; }
+  $('color-guide').classList.add('hidden');
+}
+
+function startColorRx() {
+  stopColorRx();
+  colorWarm = 0;
+  $('color-guide').classList.remove('hidden');
+  const video = $('camera-preview');
+  const grab = document.createElement('canvas');
+  const gctx = grab.getContext('2d', { willReadFrequently: true });
+  const disp = stripPatches();
+  colorRxTimer = setInterval(async () => {
+    if (!bfRx || bfRx.done || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    const L = frameLayout(600), T = L.total;
+    // crop the guide region (central 70%) of the camera frame, scale to layout size
+    const vw = video.videoWidth, vh = video.videoHeight;
+    grab.width = T; grab.height = T;
+    gctx.drawImage(video, 0.15 * vw, 0.15 * vh, 0.7 * vw, 0.7 * vh, 0, 0, T, T);
+    const img = gctx.getImageData(0, 0, T, T);
+    const { observedStrip, body } = sampleFrame(img, 600);
+    const obs = observedStrip.map((samples) => {
+      const meanLin = [0, 0, 0], mu = [0, 0, 0], std = [0, 0, 0];
+      for (const s of samples) for (let c = 0; c < 3; c++) { meanLin[c] += linearize(s[c]) / samples.length; mu[c] += s[c] / samples.length; }
+      for (const s of samples) for (let c = 0; c < 3; c++) std[c] += (s[c] - mu[c]) ** 2 / samples.length;
+      return { meanLin, std: std.map(Math.sqrt) };
+    });
+    const est = estimateModel(disp, obs);
+    if (colorWarm < 2) { colorWarm++; $('rx-status-text').textContent = `color: calibrating… (${colorWarm}/2)`; return; }
+    const back = decodeSIC(body, ALLOC, est, PEDESTAL);
+    const W = 600;
+    for (let p = 0; p < 6; p++) {
+      // 3×3 majority + jsQR
+      const f = new Uint8Array(W * W);
+      for (let y = 1; y < W - 1; y++) for (let x = 1; x < W - 1; x++) {
+        let s = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += back[p][(y + dy) * W + (x + dx)];
+        f[y * W + x] = s > 4 ? 1 : 0;
+      }
+      const rgba = new Uint8ClampedArray(W * W * 4);
+      for (let i = 0; i < W * W; i++) { const v = f[i] ? 0 : 255; rgba[4*i]=rgba[4*i+1]=rgba[4*i+2]=v; rgba[4*i+3]=255; }
+      // eslint-disable-next-line no-undef
+      const code = jsQR(rgba, W, W, { inversionAttempts: 'dontInvert' });
+      if (code && code.binaryData && code.binaryData.length) await handleScannedBinary(new Uint8Array(code.binaryData));
+    }
+  }, 500);   // ~2 decode attempts/sec (SIC on 664² is heavy; TX keeps broadcasting)
+}
+
 function resetRx() {
+  stopColorRx();
   bfRx = new BlindFireReceiver();
   rx = new Receiver();
   rx.onProgress = (cur, total) => {
@@ -175,6 +270,7 @@ function triggerDownload() {
 
 function switchMode(next) {
   mode = next;
+  if (next === 'recv' && isColor()) startColorRx(); else stopColorRx();
   $('tab-send').classList.toggle('active', mode === 'send');
   $('tab-recv').classList.toggle('active', mode === 'recv');
   $('ui-send').classList.toggle('hidden', mode === 'recv');
@@ -228,6 +324,15 @@ function init() {
   $('tab-send').addEventListener('click', () => switchMode('send'));
   $('tab-recv').addEventListener('click', () => switchMode('recv'));
   $('btn-switch-cam').addEventListener('click', () => scanner.toggleFacing());
+  $('btn-mirror').addEventListener('click', () => {
+    const v = $('camera-preview');
+    v.style.transform = v.style.transform === 'scaleX(-1)' ? '' : 'scaleX(-1)';
+  });
+  $('color-mode').addEventListener('change', () => {
+    if (!isBF()) { $('color-mode').checked = false; alert('Color ×6 requires the one-way (blind-fire) transport.'); return; }
+    resetTx(); resetRx(); display.update(IDLE_VALUE, 'Idle state.');
+    if (mode === 'recv' && isColor()) startColorRx();
+  });
   $('file-input').addEventListener('change', (e) => {
     $('btn-start-tx').disabled = e.target.files.length === 0;
   });

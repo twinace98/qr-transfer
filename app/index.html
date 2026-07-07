@@ -34,6 +34,10 @@
           <span><strong>One-way (blind-fire)</strong><br/>
           <small>fountain broadcast — receiver only watches; loss-tolerant, fast</small></span>
         </label>
+        <label id="color-label" style="display:flex; align-items:center; gap:.4rem;">
+          <input type="checkbox" id="color-mode" />
+          <span><strong>Color ×6</strong><br/><small>6 QR planes/frame (one-way only)</small></span>
+        </label>
         <label style="display:flex; align-items:center; gap:.4rem; margin-left:auto;">
           <span><strong>FPS</strong><br/><small>QR frames/sec</small></span>
           <select id="fps-select">
@@ -62,10 +66,12 @@
               </svg>
               Switch Camera
             </button>
+            <button id="btn-mirror" class="btn btn-sm" title="Mirror preview horizontally">Mirror</button>
           </div>
           <div class="preview-wrap">
             <video id="camera-preview" playsinline muted></video>
             <div id="camera-overlay" class="overlay"></div>
+            <div id="color-guide" class="hidden" style="position:absolute; inset:15%; border:3px dashed #0f0; pointer-events:none;"></div>
           </div>
           <div id="scan-status" class="status">Initializing camera…</div>
           <input id="fallback-camera-input" type="file" accept="image/*" class="hidden" />

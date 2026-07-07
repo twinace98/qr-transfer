@@ -1,0 +1,36 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>RUNNING</title></head><body>
+<pre id="out">running…</pre>
+<canvas id="cv" width="300" height="300"></canvas>
+<script src="vendor/jsQR.min.js"></script>
+<script src="vendor/qrious.min.js"></script>
+<script type="module">
+import { BlindFireSender } from './js/blindfire-tx.js';
+import { createDisplay } from './js/qr.js';
+const res = [];
+const cv = document.getElementById('cv');
+const scan = () => {
+  const ctx = cv.getContext('2d');
+  const img = ctx.getImageData(0, 0, cv.width, cv.height);
+  const c = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+  return c ? (c.binaryData ? `bin ${c.binaryData.length}B` : `txt ${c.data.length}`) : 'NOT-DETECTED';
+};
+const disp = createDisplay(cv);                       // app path: reused QRious instance
+res.push('idle: ' + scan() + ` (canvas ${cv.width})`);
+const tx = await BlindFireSender.create(new Uint8Array(3000).map((_,i)=>i*7&0xff), { blockSize: 100, fileId: 9 });
+const pkt = tx.nextPacket();
+let s = ''; for (const b of pkt) s += String.fromCharCode(b);
+disp.setLevel('L');
+disp.update(s);
+res.push('bf-L block100: ' + scan() + ` (canvas ${cv.width})`);
+disp.update(s + '');                                   // second update, same instance
+res.push('bf-L again: ' + scan());
+// fresh instance for contrast (like blindfire-check which PASSED)
+const cv2 = document.createElement('canvas');
+new QRious({ element: cv2, size: 560, level: 'L', value: s });
+const ctx2 = cv2.getContext('2d');
+const img2 = ctx2.getImageData(0, 0, cv2.width, cv2.height);
+const c2 = jsQR(img2.data, img2.width, img2.height, { inversionAttempts: 'dontInvert' });
+res.push('fresh-instance: ' + (c2 ? (c2.binaryData ? `bin ${c2.binaryData.length}B` : 'txt') : 'NOT-DETECTED'));
+document.getElementById('out').textContent = res.join(' | ');
+document.title = 'DONE';
+</script></body></html>

@@ -327,9 +327,37 @@ function init() {
   $('tab-recv').addEventListener('click', () => switchMode('recv'));
   $('btn-switch-cam').addEventListener('click', () => scanner.toggleFacing());
   $('btn-selftest').addEventListener('click', () => {
-    // feed the DISPLAYED canvas straight into jsQR: separates rendering bugs from optics
+    // feed the DISPLAYED canvas straight into the matching decoder: rendering vs optics
     const cv = $('qr-canvas'), ctx = cv.getContext('2d');
     const img = ctx.getImageData(0, 0, cv.width, cv.height);
+    const out0 = $('selftest-result');
+    if (isColor()) {
+      // color composite: run the actual color RX pipeline (a plain QR scan CANNOT read this)
+      const W = 600, L = frameLayout(W);
+      if (cv.width !== L.total) { out0.textContent = 'color mode: start a broadcast first, then self-test.'; return; }
+      const { observedStrip, body } = sampleFrame(img, W);
+      const disp = stripPatches();
+      const obs = observedStrip.map((samples) => {
+        const meanLin = [0, 0, 0], mu = [0, 0, 0], std = [0, 0, 0];
+        for (const s of samples) for (let c = 0; c < 3; c++) { meanLin[c] += linearize(s[c]) / samples.length; mu[c] += s[c] / samples.length; }
+        for (const s of samples) for (let c = 0; c < 3; c++) std[c] += (s[c] - mu[c]) ** 2 / samples.length;
+        return { meanLin, std: std.map(Math.sqrt) };
+      });
+      const est = estimateModel(disp, obs);
+      const back = decodeSIC(body, ALLOC, est, PEDESTAL);
+      let okPlanes = 0;
+      for (let p = 0; p < 6; p++) {
+        const rgba = new Uint8ClampedArray(W * W * 4);
+        for (let i = 0; i < W * W; i++) { const v = back[p][i] ? 0 : 255; rgba[4*i]=rgba[4*i+1]=rgba[4*i+2]=v; rgba[4*i+3]=255; }
+        // eslint-disable-next-line no-undef
+        const c = jsQR(rgba, W, W, { inversionAttempts: 'dontInvert' });
+        if (c && c.binaryData && c.binaryData.length && parsePacket(new Uint8Array(c.binaryData))) okPlanes++;
+      }
+      out0.innerHTML = okPlanes === 6
+        ? '<span class="good">COLOR OK: 6/6 planes decoded in-page</span> — color rendering fine; live failure = camera alignment/optics'
+        : `<span class="err">COLOR: ${okPlanes}/6 planes decoded — report this</span>`;
+      return;
+    }
     // eslint-disable-next-line no-undef
     const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
     const out = $('selftest-result');

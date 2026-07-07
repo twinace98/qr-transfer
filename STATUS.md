@@ -1,6 +1,11 @@
 # Project Status
 
-- **Phase**: Phase 3 — 3.1 ✅ (LZMA kept, lzma-wasm) · **3.2 ✅ PASS** (LT fountain + blind-fire core; peeling + GF(2)-finish decoder, ε mean 2–6 % at k 64–256, locked c=0.1 δ=0.05). **3.3 complete** — combined sweep 36/36 SHA-exact; binary(incompressible) 5.2–16.3× B0, text 57× B0 @0% drop. **Decision gate 2 PASS (user-approved 2026-07-07)**; QRious byte-mode browser-verified to v40-L (blindfire-check.html).
+- **Phase**: Phases 1–4 ✅ COMPLETE (gates 1–3 PASS). **Phase 5 (live color UI) in progress**:
+  5.1 core + 5.2 loopback ✅ (colorframe layout, meta color announce 0xC0, live-layout
+  loopback SHA-exact, warm-up 2 frames, 0 plane fails). Pending: app camera wiring
+  (guide-box RX mapping), replica-color window variant, 5.3 real-device run → gate 4.
+- **Deploy**: GitHub Pages (branch main + .nojekyll) — https://twinace98.github.io/qr-transfer/
+  Unified app: transport radio (two-way ACK / one-way blind-fire) + FPS 10/15/20.
 - **Target**: Browser optical QR file-transfer app — replica of charlielee206.github.io/QR_FTP, then performance study.
 - **Methods**: Vanilla JS (ES modules), `jsQR` (decode), `QRious` (encode); headless Node bench harness in later phases.
 - **Infrastructure**: None (client-side web app; runs in browser + local static server).

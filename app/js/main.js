@@ -55,7 +55,9 @@ function handleScannedData(data) {
 
 async function handleScannedBinary(bytes) {
   if (!isBF() || mode !== 'recv' || !bfRx || bfRx.done) return;
+  const before = bfRx.corrupt;
   const finished = bfRx.onPacket(bytes);
+  if (bfRx.corrupt > before) { $('rx-status-text').textContent = `packet rejected (CRC/magic) — ${bfRx.corrupt} so far`; return; }
   if (bfRx.dec) {
     const cur = bfRx.dec.solved, total = bfRx.dec.k;
     $('rx-progress-container').classList.remove('hidden');

@@ -11,7 +11,7 @@ export function createDisplay(canvasEl, statusEl = null) {
   // eslint-disable-next-line no-undef
   const qr = new QRious({
     element: canvasEl,
-    size: 300,
+    size: 560,
     level: 'M',       // Medium error correction (~15%): original's density/durability balance.
     value: IDLE_VALUE,
   });
